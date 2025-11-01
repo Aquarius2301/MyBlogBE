@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using BusinessObject.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace BusinessObject.Models;
@@ -24,6 +25,8 @@ public class Account
     [Required]
     public string Email { get; set; } = null!;
     public string? EmailVerifiedCode { get; set; } = null;
+    public VerificationType? VerificationType { get; set; } = null;
+    public DateTime? EmailVerifiedCodeExpiry { get; set; } = null;
 
     [Required, JsonIgnore]
     public string HashedPassword { get; set; } = null!;

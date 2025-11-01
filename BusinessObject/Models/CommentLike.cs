@@ -16,7 +16,7 @@ public class CommentLike
     public Guid AccountId { get; set; }
 
     [Required]
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation
     public Comment Comment { get; set; } = null!;

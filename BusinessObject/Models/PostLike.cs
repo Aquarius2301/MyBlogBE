@@ -16,7 +16,7 @@ public class PostLike
     public Guid AccountId { get; set; }
 
     [Required]
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation
     public Post Post { get; set; } = null!;

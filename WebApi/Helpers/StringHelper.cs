@@ -18,7 +18,7 @@ public class StringHelper
             using var rng = RandomNumberGenerator.Create();
             rng.GetBytes(randomBytes);
             return Convert.ToBase64String(randomBytes)
-                         .Substring(0, length) // cắt ngắn đúng độ dài
+                         .Substring(0, length)
                          .Replace("+", "")
                          .Replace("/", "")
                          .Replace("=", "");

@@ -1,5 +1,6 @@
 using System;
 using BusinessObject;
+using BusinessObject.Enums;
 using BusinessObject.Models;
 using DataAccess.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -23,6 +24,11 @@ public class AccountRepository : Repository<Account>, IAccountRepository
     {
         return await _context.Accounts
                     .FirstOrDefaultAsync(x => x.Username == username && x.DeletedAt == null);
+    }
+    public async Task<Account?> GetByEmailAsync(string email)
+    {
+        return await _context.Accounts
+                    .FirstOrDefaultAsync(x => x.Email == email && x.DeletedAt == null);
     }
 
     public async Task<Account?> GetByRefreshTokenAsync(string refreshToken)

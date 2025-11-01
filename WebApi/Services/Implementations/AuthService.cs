@@ -1,6 +1,8 @@
 using System;
+using BusinessObject.Enums;
 using BusinessObject.Models;
 using DataAccess.UnitOfWork;
+using Microsoft.EntityFrameworkCore;
 using WebApi.Helpers;
 using WebAPI.Dtos;
 using WebAPI.Helpers;
@@ -31,7 +33,7 @@ public class AuthService : IAuthService
 
         account.AccessToken = _jwtHelper.GenerateAccessToken(account);
         account.RefreshToken = _jwtHelper.GenerateRefreshToken();
-        account.RefreshTokenExpiryTime = DateTime.Now.AddDays(_jwtHelper.RefreshTokenDurationDays);
+        account.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(_jwtHelper.RefreshTokenDurationDays);
         await _unitOfWork.Accounts.UpdateAsync(account);
 
         return new AuthResponse
@@ -47,7 +49,7 @@ public class AuthService : IAuthService
 
         if (account != null && account.RefreshToken == refreshToken)
         {
-            if (account.RefreshTokenExpiryTime >= DateTime.Now)
+            if (account.RefreshTokenExpiryTime >= DateTime.UtcNow)
             {
                 account.AccessToken = _jwtHelper.GenerateAccessToken(account);
                 account.RefreshToken = _jwtHelper.GenerateRefreshToken();
@@ -91,18 +93,24 @@ public class AuthService : IAuthService
         return false;
     }
 
-    public async Task<string?> RegisterAccountAsync(RegisterRequest request)
+    public async Task<(bool, string?)> RegisterAccountAsync(RegisterRequest request)
     {
-
-        var existingAccount = await _unitOfWork.Accounts.GetByUsernameAsync(request.Username);
-        if (existingAccount != null)
+        if (await _unitOfWork.Accounts.GetByUsernameAsync(request.Username) != null)
         {
-            return null;
+            return (false, "user");
         }
-        var tokenLength = _emailHelper.TokenLength;
-        var confirmCode = StringHelper.GenerateRandomString(tokenLength, true);
 
-        await _emailHelper.SendEmailAsync(request.Email, request.Username, confirmCode);
+        if (await _unitOfWork.Accounts.GetByEmailAsync(request.Email) != null)
+        {
+            return (false, "email");
+        }
+
+        var tokenLength = _emailHelper.TokenLength;
+        var tokenTimeout = _emailHelper.TokenTimeOut;
+        var confirmCode = StringHelper.GenerateRandomString(tokenLength, true);
+        var currentTime = DateTime.UtcNow;
+
+        await _emailHelper.SendRegisterEmailAsync(request.Email, request.Username, confirmCode);
 
         var newAccount = new Account
         {
@@ -112,26 +120,87 @@ public class AuthService : IAuthService
             DateOfBirth = request.DateOfBirth,
             Email = request.Email,
             EmailVerifiedCode = confirmCode,
+            VerificationType = VerificationType.Register,
+            EmailVerifiedCodeExpiry = currentTime.AddMinutes(tokenTimeout),
             HashedPassword = PasswordHasher.HashPassword(request.Password),
-            IsActive = true,
-            CreatedAt = DateTime.Now,
+            IsActive = false,
+            CreatedAt = currentTime,
         };
 
         await _unitOfWork.Accounts.AddAsync(newAccount);
 
-        return confirmCode;
+        return (true, confirmCode);
     }
 
-    public async Task<bool> ConfirmAccountAsync(string confirmCode)
+    public async Task<bool> ConfirmRegisterAccountAsync(string confirmCode)
     {
-        var tokenTimeout = _emailHelper.TokenTimeOut;
         var account = await _unitOfWork.Accounts.GetByConfirmCodeAsync(confirmCode);
 
-        if (account != null && DateTime.Now <= account.CreatedAt.AddMinutes(tokenTimeout))
+        if (account != null && account.VerificationType == VerificationType.Register && DateTime.UtcNow <= account.EmailVerifiedCodeExpiry)
         {
             account.EmailVerifiedCode = null;
+            account.VerificationType = null;
+            account.EmailVerifiedCodeExpiry = null;
+            account.IsActive = true;
 
             await _unitOfWork.Accounts.UpdateAsync(account);
+            return true;
+        }
+
+        return false;
+    }
+
+    public async Task<string?> ConfirmForgetPasswordAccountAsync(string confirmCode)
+    {
+        var account = await _unitOfWork.Accounts.GetByConfirmCodeAsync(confirmCode);
+
+        if (account != null && account.VerificationType == VerificationType.ForgotPassword && DateTime.UtcNow <= account.EmailVerifiedCodeExpiry)
+        {
+            account.VerificationType = VerificationType.ChangePassword;
+            account.EmailVerifiedCodeExpiry = null;
+
+            await _unitOfWork.Accounts.UpdateAsync(account);
+            return confirmCode;
+        }
+
+        return null;
+    }
+
+    public async Task<bool> ForgotPasswordAsync(string identifier)
+    {
+        var tokenTimeout = _emailHelper.TokenTimeOut;
+        var account = await _unitOfWork.Accounts.GetQuery()
+                        .FirstOrDefaultAsync(x => x.Email == identifier || x.Username == identifier && x.DeletedAt == null);
+
+        if (account != null)
+        {
+            var confirmCode = StringHelper.GenerateRandomString(_emailHelper.TokenLength);
+            await _emailHelper.SendForgotPasswordEmailAsync(account.Email, account.Username, confirmCode);
+
+            account.EmailVerifiedCode = confirmCode;
+            account.VerificationType = VerificationType.ForgotPassword;
+            account.EmailVerifiedCodeExpiry = DateTime.UtcNow.AddMinutes(tokenTimeout);
+
+            await _unitOfWork.Accounts.UpdateAsync(account);
+            return true;
+        }
+
+        return false;
+    }
+
+    public async Task<bool> ResetPasswordAsync(string confirmCode, string newPassowrd)
+    {
+        var account = await _unitOfWork.Accounts.GetByConfirmCodeAsync(confirmCode);
+
+        if (account != null && account.VerificationType == VerificationType.ChangePassword)
+        {
+            account.VerificationType = null;
+            account.EmailVerifiedCodeExpiry = null;
+            account.EmailVerifiedCode = null;
+            account.HashedPassword = PasswordHasher.HashPassword(newPassowrd);
+
+            await _unitOfWork.Accounts.UpdateAsync(account);
+
             return true;
         }
 

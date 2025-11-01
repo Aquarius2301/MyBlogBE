@@ -50,7 +50,7 @@ public class EmailHelper
         await client.DisconnectAsync(true);
     }
 
-    public async Task SendEmailAsync(string email, string username, string confirmCode)
+    public async Task SendRegisterEmailAsync(string email, string username, string confirmCode)
     {
         var emailTokenTimeout = _settings.EmailTokenTimeoutMinute;
 
@@ -60,11 +60,29 @@ public class EmailHelper
                      body: $"<h2>Xin chào {username}</h2><br/>" +
                              "<p>Bạn đã đăng ký tài khoản thành công trên MyBlog.</p>" +
                              "<p>Vui lòng hãy nhấn vào liên kết này để xác thực email:</p>" +
-                             $"<a href='https://myblog.example.com/confirm?token={confirmCode}'>Xác nhận tài khoản</a><br/><br/>" +
+                             $"<a href='https://myblog.example.com/confirm?type=register&token={confirmCode}'>Xác nhận tài khoản</a><br/><br/>" +
                              $"<p>Đường link này chỉ tồn tại trong {emailTokenTimeout} phút.</p><br/>" +
                              "<p>Nếu bạn không đăng ký tài khoản này, vui lòng bỏ qua email này.</p>" +
                              "<br/><p>Trân trọng,<br/>Đội ngũ MyBlog</p>"
                  );
     }
+
+    public async Task SendForgotPasswordEmailAsync(string email, string username, string confirmCode)
+    {
+        var emailTokenTimeout = _settings.EmailTokenTimeoutMinute;
+
+        await SendEmailAsync(
+                     to: email,
+                     subject: "Xác nhận quên mật khẩu tài khoản MyBlog",
+                     body: $"<h2>Xin chào {username}</h2><br/>" +
+                             "<p>Bạn đã quên mật khẩu trên MyBlog.</p>" +
+                             "<p>Vui lòng hãy nhấn vào liên kết này để xác thực email:</p>" +
+                             $"<a href='https://myblog.example.com/confirm?type=forgotPassword&token={confirmCode}'>Xác nhận tài khoản</a><br/><br/>" +
+                             $"<p>Đường link này chỉ tồn tại trong {emailTokenTimeout} phút.</p><br/>" +
+                             "<p>Nếu bạn không sử dụng quên mật khẩu, vui lòng bỏ qua email này.</p>" +
+                             "<br/><p>Trân trọng,<br/>Đội ngũ MyBlog</p>"
+                 );
+    }
+
 }
 

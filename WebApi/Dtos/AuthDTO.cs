@@ -14,6 +14,11 @@ public class AuthResponse
     public string? RefreshToken { get; set; } = null!;
 }
 
+public class RefreshRequest
+{
+    public string Token { get; set; } = null!;
+}
+
 public class UserInfoResponse
 {
     public Guid Id { get; set; }
@@ -38,3 +43,4 @@ public class RegisterResponse
     public string Email { get; set; } = null!;
     public string Password { get; set; } = null!;
 }
+

@@ -1,5 +1,6 @@
 using System;
 using BusinessObject;
+using BusinessObject.Enums;
 using DataAccess.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
 
@@ -32,7 +33,7 @@ public class AccountCleanupHelper : BackgroundService
 
         var now = DateTime.UtcNow;
         var expiredAccounts = await unitOfWork.Accounts.GetQuery()
-            .Where(a => !string.IsNullOrEmpty(a.EmailVerifiedCode) && a.CreatedAt.AddMinutes(30) <= now)
+            .Where(a => !string.IsNullOrEmpty(a.EmailVerifiedCode) && a.EmailVerifiedCodeExpiry <= now && a.VerificationType == VerificationType.Register)
             .ToListAsync();
 
         if (expiredAccounts.Any())
@@ -61,6 +62,8 @@ public class AccountCleanupHelper : BackgroundService
             {
                 account.SelfRemoveTime = null;
                 account.DeletedAt = now;
+                account.IsActive = false;
+
                 await unitOfWork.Accounts.UpdateAsync(account);
             }
             Console.WriteLine($"[Cleanup] Soft-deleted {expiredAccounts.Count} accounts scheduled for self-removal at {now}.");
