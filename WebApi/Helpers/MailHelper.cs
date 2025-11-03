@@ -5,29 +5,87 @@ using MimeKit;
 
 namespace WebApi.Helpers;
 
+/// <summary>
+/// Configuration settings for sending emails.
+/// </summary>
 public class EmailSettings
 {
+
+    /// <summary>
+    /// SMTP server address.
+    /// </summary>
     public string SmtpServer { get; set; } = string.Empty;
+
+    /// <summary>
+    /// SMTP server port.
+    /// </summary>
     public int Port { get; set; }
+
+    /// <summary>
+    /// Display name of the email sender.
+    /// </summary>
     public string SenderName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Email address of the sender.
+    /// </summary>
     public string SenderEmail { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Username for SMTP authentication.
+    /// </summary>
     public string Username { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Password for SMTP authentication.
+    /// </summary>
     public string Password { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Expiration time (in minutes) for email verification tokens.
+    /// </summary>
     public int EmailTokenTimeoutMinute { get; set; }
+
+    /// <summary>
+    /// Length of the email verification token.
+    /// </summary>
     public int EmailTokenLength { get; set; }
 }
 
+/// <summary>
+/// Helper class for sending emails such as registration and password reset emails.
+/// </summary>
 public class EmailHelper
 {
     private readonly EmailSettings _settings;
+
+    /// <summary>
+    /// Gets the token timeout duration in minutes.
+    /// </summary>
     public int TokenTimeOut => _settings.EmailTokenTimeoutMinute;
+
+    /// <summary>
+    /// Gets the length of email verification tokens.
+    /// </summary>
     public int TokenLength => _settings.EmailTokenLength;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="EmailHelper"/> class.
+    /// </summary>
+    /// <param name="options">The configured email settings.</param>
     public EmailHelper(IOptions<EmailSettings> options)
     {
         _settings = options.Value;
     }
 
+    /// <summary>
+    /// Sends an email to the specified recipient.
+    /// </summary>
+    /// <param name="to">Recipient email address.</param>
+    /// <param name="subject">Subject of the email.</param>
+    /// <param name="body">Body content of the email.</param>
+    /// <param name="isHtml">Indicates whether the body is HTML. Defaults to true.</param>
+    /// <returns>A task representing the asynchronous email sending operation.</returns>
     public async Task SendEmailAsync(string to, string subject, string body, bool isHtml = true)
     {
         var message = new MimeMessage();
@@ -50,6 +108,17 @@ public class EmailHelper
         await client.DisconnectAsync(true);
     }
 
+    /// <summary>
+    /// Sends a registration confirmation email to a new user.
+    /// </summary>
+    /// <param name="email">Recipient email address.</param>
+    /// <param name="username">Username of the new account.</param>
+    /// <param name="confirmCode">Confirmation code for email verification.</param>
+    /// <returns>A task representing the asynchronous email sending operation.</returns>
+    /// <remarks>
+    /// The email includes a link to confirm the account.  
+    /// The confirmation link expires after <see cref="TokenTimeOut"/> minutes.
+    /// </remarks>
     public async Task SendRegisterEmailAsync(string email, string username, string confirmCode)
     {
         var emailTokenTimeout = _settings.EmailTokenTimeoutMinute;
@@ -67,6 +136,17 @@ public class EmailHelper
                  );
     }
 
+    /// <summary>
+    /// Sends a password reset email to the user.
+    /// </summary>
+    /// <param name="email">Recipient email address.</param>
+    /// <param name="username">Username of the account.</param>
+    /// <param name="confirmCode">Confirmation code for password reset.</param>
+    /// <returns>A task representing the asynchronous email sending operation.</returns>
+    /// <remarks>
+    /// The email includes a link to reset the password.  
+    /// The confirmation link expires after <see cref="TokenTimeOut"/> minutes.
+    /// </remarks>
     public async Task SendForgotPasswordEmailAsync(string email, string username, string confirmCode)
     {
         var emailTokenTimeout = _settings.EmailTokenTimeoutMinute;

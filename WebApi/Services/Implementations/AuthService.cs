@@ -26,7 +26,8 @@ public class AuthService : IAuthService
     {
         var account = await _unitOfWork.Accounts.GetByUsernameAsync(username);
 
-        if (account == null || !PasswordHasher.VerifyPassword(password, account.HashedPassword))
+        if (account == null || account.Status == StatusType.InActive
+            || !PasswordHasher.VerifyPassword(password, account.HashedPassword))
         {
             return null;
         }
@@ -47,7 +48,8 @@ public class AuthService : IAuthService
     {
         var account = await _unitOfWork.Accounts.GetByRefreshTokenAsync(refreshToken);
 
-        if (account != null && account.RefreshToken == refreshToken)
+        if (account != null && account.Status != StatusType.InActive
+             && account.RefreshToken == refreshToken)
         {
             if (account.RefreshTokenExpiryTime >= DateTime.UtcNow)
             {
@@ -55,6 +57,12 @@ public class AuthService : IAuthService
                 account.RefreshToken = _jwtHelper.GenerateRefreshToken();
 
                 await _unitOfWork.Accounts.UpdateAsync(account);
+
+                return new AuthResponse
+                {
+                    AccessToken = account.AccessToken,
+                    RefreshToken = account.RefreshToken
+                };
             }
             else
             {
@@ -63,13 +71,9 @@ public class AuthService : IAuthService
                 account.RefreshTokenExpiryTime = null;
 
                 await _unitOfWork.Accounts.UpdateAsync(account);
-            }
 
-            return new AuthResponse
-            {
-                AccessToken = account.AccessToken,
-                RefreshToken = account.RefreshToken
-            };
+                return null;
+            }
         }
 
         return null;
@@ -123,7 +127,7 @@ public class AuthService : IAuthService
             VerificationType = VerificationType.Register,
             EmailVerifiedCodeExpiry = currentTime.AddMinutes(tokenTimeout),
             HashedPassword = PasswordHasher.HashPassword(request.Password),
-            IsActive = false,
+            Status = StatusType.InActive,
             CreatedAt = currentTime,
         };
 
@@ -136,12 +140,13 @@ public class AuthService : IAuthService
     {
         var account = await _unitOfWork.Accounts.GetByConfirmCodeAsync(confirmCode);
 
-        if (account != null && account.VerificationType == VerificationType.Register && DateTime.UtcNow <= account.EmailVerifiedCodeExpiry)
+        if (account != null && account.VerificationType == VerificationType.Register
+            && DateTime.UtcNow <= account.EmailVerifiedCodeExpiry)
         {
             account.EmailVerifiedCode = null;
             account.VerificationType = null;
             account.EmailVerifiedCodeExpiry = null;
-            account.IsActive = true;
+            account.Status = StatusType.Active;
 
             await _unitOfWork.Accounts.UpdateAsync(account);
             return true;
@@ -150,11 +155,12 @@ public class AuthService : IAuthService
         return false;
     }
 
-    public async Task<string?> ConfirmForgetPasswordAccountAsync(string confirmCode)
+    public async Task<string?> ConfirmForgotPasswordAccountAsync(string confirmCode)
     {
         var account = await _unitOfWork.Accounts.GetByConfirmCodeAsync(confirmCode);
 
-        if (account != null && account.VerificationType == VerificationType.ForgotPassword && DateTime.UtcNow <= account.EmailVerifiedCodeExpiry)
+        if (account != null && account.VerificationType == VerificationType.ForgotPassword
+            && DateTime.UtcNow <= account.EmailVerifiedCodeExpiry)
         {
             account.VerificationType = VerificationType.ChangePassword;
             account.EmailVerifiedCodeExpiry = null;
@@ -170,7 +176,11 @@ public class AuthService : IAuthService
     {
         var tokenTimeout = _emailHelper.TokenTimeOut;
         var account = await _unitOfWork.Accounts.GetQuery()
-                        .FirstOrDefaultAsync(x => x.Email == identifier || x.Username == identifier && x.DeletedAt == null);
+                        .FirstOrDefaultAsync(
+                            x => (x.Email == identifier || x.Username == identifier)
+                                && (x.Status != StatusType.InActive)
+                                && x.DeletedAt == null
+                        );
 
         if (account != null)
         {

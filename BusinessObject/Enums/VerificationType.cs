@@ -4,7 +4,16 @@ namespace BusinessObject.Enums;
 
 public enum VerificationType
 {
-    Register = 0,
-    ForgotPassword = 1,
-    ChangePassword = 2
+    /// <summary>
+    /// Verification type for account registration.
+    /// </summary>
+    Register,
+    /// <summary>
+    /// Verification type for password reset.
+    /// </summary>
+    ForgotPassword,
+    /// <summary>
+    /// Verification type for changing password.
+    /// </summary>
+    ChangePassword
 }

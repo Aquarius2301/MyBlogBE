@@ -44,3 +44,15 @@ public class RegisterResponse
     public string Password { get; set; } = null!;
 }
 
+public class ForgotPasswordResponse
+{
+    public string Identifier { get; set; } = null!;
+}
+
+public class ResetPasswordRequest
+{
+    public string ConfirmCode { get; set; } = null!;
+    public string NewPassword { get; set; } = null!;
+}
+
+
