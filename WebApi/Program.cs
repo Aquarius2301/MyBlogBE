@@ -1,6 +1,6 @@
 using System.Text;
 using BusinessObject;
-using BusinessObject.Models;
+using BusinessObject.Seeds;
 using DataAccess.Repositories.Implementations;
 using DataAccess.Repositories.Interfaces;
 using DataAccess.UnitOfWork;
@@ -10,6 +10,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using WebApi.Helpers;
+using WebApi.Services.Implementations;
+using WebApi.Services.Interfaces;
 using WebAPI.Helpers;
 using WebAPI.Services.Implementations;
 
@@ -96,6 +98,7 @@ builder.Services.AddScoped<IPostPictureRepository, PostPictureRepository>();
 
 // Services
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IPostService, PostService>();
 
 builder.Services.AddCors(options =>
 {
@@ -109,6 +112,12 @@ builder.Services.AddCors(options =>
 
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<MyBlogContext>();
+    Seeder.Seed(db);
+}
 
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {

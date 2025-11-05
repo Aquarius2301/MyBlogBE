@@ -120,13 +120,6 @@ public class MyBlogContext : DbContext
             .WithMany(c => c.PostPictures)
             .HasForeignKey(c => c.PostId)
             .OnDelete(DeleteBehavior.NoAction);
-
-        modelBuilder.Entity<Account>().HasData(SeedData.CreateAccount());
-        modelBuilder.Entity<Post>().HasData(SeedData.CreatePost());
-        modelBuilder.Entity<Comment>().HasData(SeedData.CreateComment());
-        modelBuilder.Entity<CommentLike>().HasData(SeedData.CreateCommentLike());
-        modelBuilder.Entity<PostLike>().HasData(SeedData.CreatePostLike());
-        modelBuilder.Entity<Follow>().HasData(SeedData.CreateFollow());
     }
 
     public MyBlogContext(DbContextOptions<MyBlogContext> options)
