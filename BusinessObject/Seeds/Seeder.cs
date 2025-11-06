@@ -71,7 +71,7 @@ public class Seeder
                     posts.Add(new Post
                     {
                         Id = id,
-                        Link = $"/post/{account.Username}/{i + 1}",
+                        Link = $"post{account.Username}{i + 1}",
                         Content = $"This is post {i + 1} by {account.DisplayName}.",
                         AccountId = account.Id,
                         CreatedAt = DateTime.UtcNow.AddDays(Random.Shared.Next(-100, 0)),
@@ -164,12 +164,13 @@ public class Seeder
             Console.WriteLine("Seeding comments...");
 
             var rand = new Random();
-            var comments = new List<Comment>();
+
             var posts = context.Posts.ToList();
             var accounts = context.Accounts.ToList();
 
             foreach (var post in posts)
             {
+                var comments = new List<Comment>();
                 var commentCount = rand.Next(1, 5);
                 for (int i = 0; i < commentCount; i++)
                 {
@@ -195,7 +196,8 @@ public class Seeder
                         CreatedAt = DateTime.UtcNow.AddDays(-rand.Next(100))
                     };
 
-                    comments.Add(parentComment);
+                    context.Comments.Add(parentComment);
+                    context.SaveChanges();
 
                     int childCount = rand.Next(1, 10);
                     for (int j = 0; i < childCount; i++)
@@ -203,7 +205,7 @@ public class Seeder
                         var childAccount = accounts[rand.Next(accounts.Count)];
                         var commentPicsChildCount = rand.Next(1, 3);
                         id = Guid.NewGuid();
-                        comments.Add(new Comment
+                        var childComment = new Comment
                         {
                             Id = id,
                             AccountId = childAccount.Id,
@@ -220,13 +222,15 @@ public class Seeder
                             Content = $"Reply comment {j + 1} from {childAccount.Username}",
                             CreatedAt = DateTime.UtcNow.AddDays(-rand.Next(100)),
                             UpdatedAt = DateTime.UtcNow.AddDays(-rand.Next(100))
-                        });
+                        };
+
+                        context.Comments.Add(childComment);
+                        context.SaveChanges();
                     }
                 }
             }
 
-            context.Comments.AddRange(comments);
-            context.SaveChanges();
+
         }
     }
 

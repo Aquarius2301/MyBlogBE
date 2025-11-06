@@ -11,7 +11,7 @@ public class PaginationRequest
 public class PaginationResponse
 {
     public object Items { get; set; } = null!;
-    public string Cursor { get; set; } = null!;
+    public DateTime? Cursor { get; set; }
     public int PageSize { get; set; }
 }
 

@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using WebApi.Dtos;
@@ -9,6 +10,7 @@ using WebAPI.Helpers;
 
 namespace WebApi.Controllers
 {
+    [Authorize]
     [Route("api/posts")]
     [ApiController]
     public class PostController : ControllerBase
@@ -25,7 +27,7 @@ namespace WebApi.Controllers
         }
 
         [HttpGet("")]
-        public async Task<IActionResult> GetPosts([FromQuery] DateTime? cursor, int pageSize = 5)
+        public async Task<IActionResult> GetPosts([FromQuery] DateTime? cursor, int pageSize = 10)
         {
             try
             {
@@ -36,10 +38,9 @@ namespace WebApi.Controllers
                 return ApiResponse.Success(new PaginationResponse
                 {
                     Items = res,
-                    Cursor = res.LastOrDefault() != null ? res.Last().CreatedAt.ToString("O") : "",
+                    Cursor = res.Count() > 0 ? res.Last().CreatedAt : null,
                     PageSize = pageSize
-                }
-                );
+                });
             }
             catch (Exception ex)
             {
@@ -47,13 +48,36 @@ namespace WebApi.Controllers
             }
         }
 
-        [HttpPost("")]
-        [Consumes("multipart/form-data")]
-        public async Task<IActionResult> ABC([FromForm] ABCRequest file)
+        [HttpGet("me")]
+        public async Task<IActionResult> GetMyPosts([FromQuery] DateTime? cursor, int pageSize = 10)
         {
             try
             {
-                var res = _cloudinaryHelper.Upload(file.File);
+                var user = _jwtHelper.GetAccountInfo();
+
+                var res = await _postService.GetMyPostsListAsync(cursor, user.Id, pageSize);
+
+                return ApiResponse.Success(new PaginationResponse
+                {
+                    Items = res,
+                    Cursor = res.Count() > 0 ? res.Last().CreatedAt : null,
+                    PageSize = pageSize
+                });
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Error(ex.Message);
+            }
+        }
+
+        [HttpGet("link/{link}")]
+        public async Task<IActionResult> GetPostsByLink(string link)
+        {
+            try
+            {
+                var user = _jwtHelper.GetAccountInfo();
+
+                var res = await _postService.GetPostByLinkAsync(link, user.Id);
 
                 return ApiResponse.Success(res);
             }
@@ -63,20 +87,25 @@ namespace WebApi.Controllers
             }
         }
 
-        [HttpDelete("")]
-        public async Task<IActionResult> ABC([FromQuery] string id)
+        [HttpPost("{id}/like")]
+        public async Task<IActionResult> LikePost(Guid id)
         {
             try
             {
-                var res = _cloudinaryHelper.Delete(id);
+                var user = _jwtHelper.GetAccountInfo();
 
-                return ApiResponse.Success(res);
+                var res = await _postService.ToggleLikePostAsync(id, user.Id);
+
+                return ApiResponse.Success(new
+                {
+                    IsLiked = res
+                });
             }
             catch (Exception ex)
             {
                 return ApiResponse.Error(ex.Message);
             }
         }
+
     }
-
 }
