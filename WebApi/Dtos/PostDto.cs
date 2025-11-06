@@ -26,3 +26,10 @@ public class PostLatestComment
     public string Content { get; set; } = null!;
     public DateTime CreatedAt { get; set; }
 }
+
+
+public class ABCRequest
+{
+    public string Title { get; set; }
+    public IFormFile File { get; set; }
+}

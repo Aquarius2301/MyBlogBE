@@ -56,6 +56,7 @@ var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 builder.Services.Configure<JwtSettings>(jwtSettings);
+builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
 
 builder.Services.AddAuthentication(options =>
 {
@@ -85,6 +86,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddHostedService<AccountCleanupHelper>();
 builder.Services.AddScoped<JwtHelper>();
 builder.Services.AddScoped<EmailHelper>();
+builder.Services.AddScoped<CloudinaryHelper>();
 
 // Repositories and Unit of Work
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -113,6 +115,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Comment this line to prevent automatic database migration
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<MyBlogContext>();

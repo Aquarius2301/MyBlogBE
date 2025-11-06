@@ -2,7 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using BusinessObject.Models;
-using DataAccess.UnitOfWork;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using WebAPI.Dtos;
 
@@ -45,28 +45,28 @@ public class JwtSettings
 /// </summary>
 public class JwtHelper
 {
-    private readonly IConfiguration _config;
     private readonly IHttpContextAccessor _httpContextAccessor;
+
+    private readonly JwtSettings _settings;
 
     /// <summary>
     /// Gets the configured access token duration in minutes.
     /// </summary>
-    public int AccessTokenDurationMinutes => _config.GetValue<int>("JwtSettings:AccessTokenDurationMinutes");
+    public int AccessTokenDurationMinutes => _settings.AccessTokenDurationMinutes;
 
     /// <summary>
     /// Gets the configured refresh token duration in days.
     /// </summary>
-    public int RefreshTokenDurationDays => _config.GetValue<int>("JwtSettings:RefreshTokenDurationDays");
+    public int RefreshTokenDurationDays => _settings.RefreshTokenDurationDays;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="JwtHelper"/> class.
     /// </summary>
-    /// <param name="config">Application configuration containing JWT settings.</param>
-    /// <param name="unitOfWork">Unit of work for database access (optional, if needed for future methods).</param>
+    /// <param name="options">Options containing JWT settings.</param>
     /// <param name="httpContextAccessor">Accessor to retrieve the current HTTP context.</param>
-    public JwtHelper(IConfiguration config, IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor)
+    public JwtHelper(IOptions<JwtSettings> options, IHttpContextAccessor httpContextAccessor)
     {
-        _config = config;
+        _settings = options.Value;
         _httpContextAccessor = httpContextAccessor;
     }
 
@@ -81,8 +81,7 @@ public class JwtHelper
     /// </remarks>
     public string GenerateAccessToken(Account account)
     {
-        var jwtSettings = _config.GetSection("JwtSettings");
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"]!));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.Key!));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var claims = new[]
@@ -92,10 +91,10 @@ public class JwtHelper
         };
 
         var token = new JwtSecurityToken(
-            issuer: jwtSettings["Issuer"],
-            audience: jwtSettings["Audience"],
+            issuer: _settings.Issuer,
+            audience: _settings.Audience,
             claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(AccessTokenDurationMinutes),
+            expires: DateTime.UtcNow.AddMinutes(_settings.AccessTokenDurationMinutes),
             signingCredentials: creds
         );
 
