@@ -9,11 +9,13 @@ public class MyBlogContext : DbContext
     public DbSet<Account> Accounts { get; set; }
     public DbSet<Comment> Comments { get; set; }
     public DbSet<CommentLike> CommentLikes { get; set; }
-    public DbSet<CommentPicture> CommentPictures { get; set; }
+    // public DbSet<CommentPicture> CommentPictures { get; set; }
     public DbSet<Follow> Follows { get; set; }
     public DbSet<Post> Posts { get; set; }
     public DbSet<PostLike> PostLikes { get; set; }
-    public DbSet<PostPicture> PostPictures { get; set; }
+    // public DbSet<PostPicture> PostPictures { get; set; }
+
+    public DbSet<Picture> Pictures { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -29,6 +31,12 @@ public class MyBlogContext : DbContext
             .HasMany(a => a.Comments)
             .WithOne(p => p.Account)
             .HasForeignKey(p => p.AccountId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        modelBuilder.Entity<Account>()
+            .HasOne(a => a.Picture)
+            .WithOne(a => a.Account)
+            .HasForeignKey<Account>(p => p.PictureId)
             .OnDelete(DeleteBehavior.NoAction);
 
         modelBuilder.Entity<Comment>()
@@ -55,6 +63,12 @@ public class MyBlogContext : DbContext
             .HasForeignKey(c => c.PostId)
             .OnDelete(DeleteBehavior.NoAction);
 
+        modelBuilder.Entity<Comment>()
+            .HasMany(c => c.Pictures)
+            .WithOne(c => c.Comment)
+            .HasForeignKey(c => c.CommentId)
+            .OnDelete(DeleteBehavior.NoAction);
+
         modelBuilder.Entity<CommentLike>()
             .HasOne(c => c.Comment)
             .WithMany(c => c.CommentLikes)
@@ -65,12 +79,6 @@ public class MyBlogContext : DbContext
             .HasOne(c => c.Account)
             .WithMany(c => c.CommentLikes)
             .HasForeignKey(c => c.AccountId)
-            .OnDelete(DeleteBehavior.NoAction);
-
-        modelBuilder.Entity<CommentPicture>()
-            .HasOne(c => c.Comment)
-            .WithMany(c => c.CommentPictures)
-            .HasForeignKey(c => c.CommentId)
             .OnDelete(DeleteBehavior.NoAction);
 
         modelBuilder.Entity<Follow>()
@@ -85,16 +93,28 @@ public class MyBlogContext : DbContext
             .HasForeignKey(c => c.FollowingId)
             .OnDelete(DeleteBehavior.NoAction);
 
+        modelBuilder.Entity<Picture>()
+            .HasOne(c => c.Account)
+            .WithOne(c => c.Picture)
+            .HasForeignKey<Picture>(c => c.AccountId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        modelBuilder.Entity<Picture>()
+            .HasOne(c => c.Post)
+            .WithMany(c => c.Pictures)
+            .HasForeignKey(c => c.PostId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        modelBuilder.Entity<Picture>()
+            .HasOne(c => c.Comment)
+            .WithMany(c => c.Pictures)
+            .HasForeignKey(c => c.CommentId)
+            .OnDelete(DeleteBehavior.NoAction);
+
         modelBuilder.Entity<Post>()
             .HasOne(c => c.Account)
             .WithMany(c => c.Posts)
             .HasForeignKey(c => c.AccountId)
-            .OnDelete(DeleteBehavior.NoAction);
-
-        modelBuilder.Entity<Post>()
-            .HasMany(c => c.PostPictures)
-            .WithOne(c => c.Post)
-            .HasForeignKey(c => c.PostId)
             .OnDelete(DeleteBehavior.NoAction);
 
         modelBuilder.Entity<Post>()
@@ -115,11 +135,12 @@ public class MyBlogContext : DbContext
             .HasForeignKey(c => c.AccountId)
             .OnDelete(DeleteBehavior.NoAction);
 
-        modelBuilder.Entity<PostPicture>()
-            .HasOne(c => c.Post)
-            .WithMany(c => c.PostPictures)
+        modelBuilder.Entity<Post>()
+            .HasMany(c => c.Pictures)
+            .WithOne(c => c.Post)
             .HasForeignKey(c => c.PostId)
             .OnDelete(DeleteBehavior.NoAction);
+
     }
 
     public MyBlogContext(DbContextOptions<MyBlogContext> options)

@@ -93,10 +93,8 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IAccountRepository, AccountRepository>();
 builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 builder.Services.AddScoped<ICommentLikeRepository, CommentLikeRepository>();
-builder.Services.AddScoped<ICommentPictureRepository, CommentPictureRepository>();
 builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddScoped<IPostLikeRepository, PostLikeRepository>();
-builder.Services.AddScoped<IPostPictureRepository, PostPictureRepository>();
 
 // Services
 builder.Services.AddScoped<IAuthService, AuthService>();

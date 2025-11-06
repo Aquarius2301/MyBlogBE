@@ -60,9 +60,9 @@ public class Post
     public Account Account { get; set; } = null!;
 
     /// <summary>
-    /// Collection of pictures associated with the post.
+    /// Collection of pictures associated with this comment.
     /// </summary>
-    public ICollection<PostPicture> PostPictures { get; set; } = new List<PostPicture>();
+    public ICollection<Picture> Pictures { get; set; } = null!;
 
     /// <summary>
     /// Collection of comments on the post.

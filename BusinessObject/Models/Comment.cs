@@ -83,7 +83,7 @@ public class Comment
     /// <summary>
     /// Collection of pictures associated with this comment.
     /// </summary>
-    public ICollection<CommentPicture> CommentPictures { get; set; } = new List<CommentPicture>();
+    public ICollection<Picture> Pictures { get; set; } = null!;
 
     /// <summary>
     /// Collection of likes on this comment.

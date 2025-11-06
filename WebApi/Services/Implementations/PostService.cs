@@ -27,7 +27,7 @@ public class PostService : IPostService
              AccountId = x.AccountId,
              AccountName = x.Account.DisplayName,
              CreatedAt = x.CreatedAt,
-             PostPicture = x.PostPictures.Select(pp => pp.Link).ToList(),
+             PostPicture = x.Pictures.Select(pp => pp.Link).ToList(),
              LatestComment = x.Comments.Where(x => x.ParentCommentId == null).OrderByDescending(c => c.CreatedAt).Select(c => new PostLatestComment
              {
                  Username = c.Account.Username,

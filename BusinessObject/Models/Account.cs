@@ -36,9 +36,9 @@ public class Account
     public DateOnly DateOfBirth { get; set; }
 
     /// <summary>
-    /// URL or path to the user's avatar image.
+    /// ID of the profile picture associated with the account.
     /// </summary>
-    public string Avatar { get; set; } = string.Empty;
+    public Guid? PictureId { get; set; } = null;
 
     /// <summary>
     /// Email address of the user.
@@ -110,6 +110,11 @@ public class Account
     public DateTime? DeletedAt { get; set; } = null;
 
     #region Navigation Properties
+
+    /// <summary>
+    /// Profile picture associated with the account.
+    /// </summary>
+    public Picture? Picture { get; set; } = null;
 
     /// <summary>
     /// Posts created by the account.
