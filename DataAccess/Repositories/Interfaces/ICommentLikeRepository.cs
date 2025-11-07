@@ -5,5 +5,5 @@ namespace DataAccess.Repositories.Interfaces;
 
 public interface ICommentLikeRepository : IRepository<CommentLike>
 {
-    Task<CommentLike?> GetCommentLikeAsync(Guid commentId);
+    Task<CommentLike?> GetCommentLikeByPostAndAccountAsync(Guid accountId, Guid commentId);
 }

@@ -26,25 +26,28 @@ public class CommentController : ControllerBase
     /// Get a paginated list of comments for a specific post.
     /// </summary>
     /// <param name="postId">The ID of the post.</param>
+    /// <param name="cursor">Timestamp of the last loaded child comment (used for pagination).</param>
     /// <param name="pageSize">Number of comments per page.</param>
     /// <returns>
     /// <para>200: Returns a list of comments for the given post.</para>
+    /// <para>404: If the post does not exist.</para>
     /// <para>500: If an unexpected error occurs.</para>
     /// </returns>
     [HttpGet("post/{postId}")]
-    public async Task<IActionResult> GetComments(Guid postId, int pageSize = 10)
+    public async Task<IActionResult> GetComments(Guid postId, [FromQuery] DateTime? cursor, [FromQuery] int pageSize = 10)
     {
         try
         {
             var user = _jwtHelper.GetAccountInfo();
-            var res = await _commentService.GetCommentList(postId, user.Id, pageSize);
+            var res = await _commentService.GetCommentList(postId, cursor, user.Id, pageSize);
 
-            return ApiResponse.Success(new PaginationResponse
+            return res != null ? ApiResponse.Success(new PaginationResponse
             {
                 Items = res,
                 Cursor = res.Count() > 0 ? res.Last().CreatedAt : null,
                 PageSize = pageSize
-            });
+            })
+            : ApiResponse.NotFound("Post not found");
         }
         catch (Exception ex)
         {
@@ -56,19 +59,22 @@ public class CommentController : ControllerBase
     /// Get a paginated list of child comments for a specific comment.
     /// </summary>
     /// <param name="id">The ID of the parent comment.</param>
+    /// <param name="cursor">Timestamp of the last loaded child comment (used for pagination).</param>
     /// <param name="pageSize">Number of child comments per page.</param>
     /// <returns>
     /// <para>200: Returns a list of child comments.</para>
+    /// <para>404: If the parent comment does not exist.</para>
     /// <para>500: If an unexpected error occurs.</para>
     /// </returns>
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetChildComments(Guid id, int pageSize = 10)
+    public async Task<IActionResult> GetChildComments(Guid id, [FromQuery] DateTime? cursor, [FromQuery] int pageSize = 10)
     {
         try
         {
             var user = _jwtHelper.GetAccountInfo();
-            var res = await _commentService.GetChildCommentList(id, user.Id, pageSize);
-            return ApiResponse.Success(res);
+            var res = await _commentService.GetChildCommentList(id, cursor, user.Id, pageSize);
+
+            return res != null ? ApiResponse.Success(res) : ApiResponse.NotFound("Comment not found");
         }
         catch (Exception ex)
         {
@@ -82,7 +88,6 @@ public class CommentController : ControllerBase
     /// <param name="id">The ID of the comment to like.</param>
     /// <returns>
     /// <para>200: Returns true if the like succeeds.</para>
-    /// <para>200: Returns false if the comment has already been liked by the user.</para>
     /// <para>400: If the comment does not exist.</para>
     /// <para>500: If an unexpected error occurs.</para>
     /// </returns>
@@ -94,7 +99,7 @@ public class CommentController : ControllerBase
             var user = _jwtHelper.GetAccountInfo();
             var res = await _commentService.LikeCommentAsync(id, user.Id);
 
-            return res != null ? ApiResponse.Success(res) : ApiResponse.NotFound("Comment not found");
+            return res ? ApiResponse.Success(res) : ApiResponse.NotFound("Comment not found");
         }
         catch (Exception ex)
         {
@@ -108,7 +113,6 @@ public class CommentController : ControllerBase
     /// <param name="id">The ID of the comment to cancel like.</param>
     /// <returns>
     /// <para>200: Returns true if the cancel like succeeds.</para>
-    /// <para>200: Returns false if the comment was not previously liked by the user.</para>
     /// <para>400: If the comment does not exist.</para>
     /// <para>500: If an unexpected error occurs.</para>
     /// </returns>
@@ -120,7 +124,7 @@ public class CommentController : ControllerBase
             var user = _jwtHelper.GetAccountInfo();
             var res = await _commentService.CancelLikeCommentAsync(id, user.Id);
 
-            return res != null ? ApiResponse.Success(res) : ApiResponse.NotFound("Comment not found");
+            return res ? ApiResponse.Success(res) : ApiResponse.NotFound("Comment not found");
         }
         catch (Exception ex)
         {

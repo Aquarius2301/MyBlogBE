@@ -16,61 +16,78 @@ public class CommentService : ICommentService
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<List<GetCommentsResponse>> GetCommentList(Guid postId, Guid userId, int pageSize)
+    public async Task<List<GetCommentsResponse>?> GetCommentList(Guid postId, DateTime? cursor, Guid userId, int pageSize)
     {
-        var comments =
-            await _unitOfWork.Comments.GetQuery()
-                .Where(c => c.PostId == postId && c.ParentCommentId == null &&
-                            c.DeletedAt == null)
-                .Select(c => new GetCommentsResponse
-                {
-                    Id = c.Id,
-                    Content = c.Content,
-                    AccountId = c.AccountId,
-                    AccountName = c.Account.DisplayName,
-                    CreatedAt = c.CreatedAt,
-                    CommentPictures = c.Pictures.Select(cp => cp.Link).ToList(),
-                    LikeCount = c.CommentLikes.Count(),
-                    CommentCount = c.Replies.Count(),
-                    IsLiked = c.CommentLikes.Any(cl => cl.AccountId == userId)
-                })
-                .OrderByDescending(c => c.CreatedAt)
-                .Take(pageSize)
-                .ToListAsync();
+        var post = await _unitOfWork.Posts.GetByIdAsync(postId);
 
-        return comments.OrderByDescending(c => c.Score).ToList();
+        if (post != null && post.DeletedAt == null)
+        {
+            var comments =
+             await _unitOfWork.Comments.GetQuery()
+                 .Where(c => c.PostId == postId && c.ParentCommentId == null && (cursor == null || c.CreatedAt < cursor) &&
+                             c.DeletedAt == null)
+                 .Select(c => new GetCommentsResponse
+                 {
+                     Id = c.Id,
+                     Content = c.Content,
+                     AccountId = c.AccountId,
+                     AccountName = c.Account.DisplayName,
+                     CreatedAt = c.CreatedAt,
+                     CommentPictures = c.Pictures.Select(cp => cp.Link).ToList(),
+                     LikeCount = c.CommentLikes.Count(),
+                     CommentCount = c.Replies.Count(),
+                     IsLiked = c.CommentLikes.Any(cl => cl.AccountId == userId)
+                 })
+                 .OrderByDescending(c => c.CreatedAt)
+                 .Take(pageSize)
+                 .ToListAsync();
+
+            return comments.OrderByDescending(c => c.Score).ToList();
+        }
+
+        return null;
     }
 
-    public async Task<List<GetChildCommentsResponse>> GetChildCommentList(Guid commentId, Guid userId, int pageSize)
+    public async Task<List<GetChildCommentsResponse>?> GetChildCommentList(Guid commentId, DateTime? cursor, Guid userId, int pageSize)
     {
-        var comments =
-            await _unitOfWork.Comments.GetQuery()
-                .Where(c => c.ParentCommentId == commentId &&
-                            c.DeletedAt == null)
-                .Select(c => new GetChildCommentsResponse
-                {
-                    Id = c.Id,
-                    Content = c.Content,
-                    AccountId = c.AccountId,
-                    AccountName = c.Account.DisplayName,
-                    ReplyAccountName = c.ReplyAccount != null ? c.ReplyAccount.DisplayName : string.Empty,
-                    CreatedAt = c.CreatedAt,
-                    CommentPictures = c.Pictures.Select(cp => cp.Link).ToList(),
-                    LikeCount = c.CommentLikes.Count(),
-                    CommentCount = c.Replies.Count(),
-                    IsLiked = c.CommentLikes.Any(cl => cl.AccountId == userId)
-                })
-                .OrderByDescending(c => c.CreatedAt)
-                .Take(pageSize)
-                .ToListAsync();
+        var comment = await _unitOfWork.Comments.GetByIdAsync(commentId);
 
-        return comments.ToList();
+        if (comment != null && comment.DeletedAt == null)
+        {
+            var comments =
+                await _unitOfWork.Comments.GetQuery()
+                    .Where(c => c.ParentCommentId == commentId && (cursor == null || c.CreatedAt < cursor) &&
+                                c.DeletedAt == null)
+                    .Select(c => new GetChildCommentsResponse
+                    {
+                        Id = c.Id,
+                        Content = c.Content,
+                        AccountId = c.AccountId,
+                        AccountName = c.Account.DisplayName,
+                        ReplyAccountName = c.ReplyAccount != null
+                                               ? c.ReplyAccount.DisplayName
+                                               : string.Empty,
+                        CreatedAt = c.CreatedAt,
+                        CommentPictures = c.Pictures.Select(cp => cp.Link).ToList(),
+                        LikeCount = c.CommentLikes.Count(),
+                        CommentCount = c.Replies.Count(),
+                        IsLiked = c.CommentLikes.Any(cl => cl.AccountId == userId)
+                    })
+                    .OrderByDescending(c => c.CreatedAt)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+            return comments.ToList();
+        }
+
+        return null;
     }
 
-    public async Task<bool?> LikeCommentAsync(Guid commentId, Guid userId)
+    public async Task<bool> LikeCommentAsync(Guid commentId, Guid userId)
     {
-        var existingPost = await _unitOfWork.Comments.GetByIdAsync(commentId);
-        if (existingPost != null && existingPost.DeletedAt == null)
+        var existingComment = await _unitOfWork.Comments.GetByIdAsync(commentId);
+
+        if (existingComment != null && existingComment.DeletedAt == null)
         {
             var existingLike = await _unitOfWork.CommentLikes.GetCommentLikeByPostAndAccountAsync(userId, commentId);
 
@@ -85,16 +102,15 @@ public class CommentService : ICommentService
 
                 return true;
             }
-
-            return false;
         }
-        return null;
+
+        return false;
     }
 
-    public async Task<bool?> CancelLikeCommentAsync(Guid commentId, Guid userId)
+    public async Task<bool> CancelLikeCommentAsync(Guid commentId, Guid userId)
     {
-        var existingPost = await _unitOfWork.Comments.GetByIdAsync(commentId);
-        if (existingPost != null && existingPost.DeletedAt == null)
+        var existingComment = await _unitOfWork.Comments.GetByIdAsync(commentId);
+        if (existingComment != null && existingComment.DeletedAt == null)
         {
             var existingLike = await _unitOfWork.CommentLikes.GetCommentLikeByPostAndAccountAsync(userId, commentId);
 
@@ -104,9 +120,8 @@ public class CommentService : ICommentService
 
                 return true;
             }
-
-            return false;
         }
-        return null;
+
+        return false;
     }
 }

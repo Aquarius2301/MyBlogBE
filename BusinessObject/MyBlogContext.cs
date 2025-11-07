@@ -53,7 +53,7 @@ public class MyBlogContext : DbContext
 
         modelBuilder.Entity<Comment>()
             .HasOne(c => c.ParentComment)
-            .WithMany()
+            .WithMany(c => c.Replies)
             .HasForeignKey(c => c.ParentCommentId)
             .OnDelete(DeleteBehavior.NoAction);
 

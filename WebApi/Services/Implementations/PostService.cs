@@ -117,7 +117,7 @@ public class PostService : IPostService
         return post;
     }
 
-    public async Task<bool?> LikePostAsync(Guid postId, Guid userId)
+    public async Task<bool> LikePostAsync(Guid postId, Guid userId)
     {
         var existingPost = await _unitOfWork.Posts.GetByIdAsync(postId);
         if (existingPost != null && existingPost.DeletedAt == null)
@@ -135,15 +135,12 @@ public class PostService : IPostService
 
                 return true;
             }
-
-            return false;
         }
 
-        return null;
-
+        return false;
     }
 
-    public async Task<bool?> CancelLikePostAsync(Guid postId, Guid userId)
+    public async Task<bool> CancelLikePostAsync(Guid postId, Guid userId)
     {
         var existingPost = await _unitOfWork.Posts.GetByIdAsync(postId);
         if (existingPost != null && existingPost.DeletedAt == null)
@@ -156,10 +153,8 @@ public class PostService : IPostService
 
                 return true;
             }
-            return false;
         }
 
-        return null;
-
+        return false;
     }
 }

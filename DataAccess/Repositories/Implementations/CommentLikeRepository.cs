@@ -12,9 +12,9 @@ public class CommentLikeRepository : Repository<CommentLike>, ICommentLikeReposi
     {
     }
 
-    public Task<CommentLike?> GetCommentLikeAsync(Guid commentId)
+    public async Task<CommentLike?> GetCommentLikeByPostAndAccountAsync(Guid accountId, Guid commentId)
     {
-        return _context.CommentLikes
-            .FirstOrDefaultAsync(cl => cl.CommentId == commentId);
+        return await _context.CommentLikes
+                     .FirstOrDefaultAsync(pl => pl.CommentId == commentId && pl.AccountId == accountId);
     }
 }

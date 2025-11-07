@@ -90,5 +90,10 @@ public class Comment
     /// </summary>
     public ICollection<CommentLike> CommentLikes { get; set; } = new List<CommentLike>();
 
+    /// <summary>
+    /// Collection of replies on this comment.
+    /// </summary>
+    public ICollection<Comment> Replies { get; set; } = new List<Comment>();
+
     #endregion
 }

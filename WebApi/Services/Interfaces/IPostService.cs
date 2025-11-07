@@ -40,11 +40,10 @@ public interface IPostService
     /// <param name="postId">The ID of the post to like.</param>
     /// <param name="userId">The ID of the user performing the like.</param>
     /// <returns>
-    /// null if the post does not exist,
     /// True if the like was successful,
-    /// False if the user has already liked the post.
+    /// False if the post does not exist.
     /// </returns>
-    Task<bool?> LikePostAsync(Guid postId, Guid userId);
+    Task<bool> LikePostAsync(Guid postId, Guid userId);
 
     /// <summary>
     /// Cancels (removes) a like from a post.
@@ -52,9 +51,8 @@ public interface IPostService
     /// <param name="postId">The ID of the post to unlike.</param>
     /// <param name="userId">The ID of the user performing the action.</param>
     /// <returns>
-    /// null if the post does not exist,
     /// True if the unlike was successful,
-    /// False if the user hadn't liked the post previously.
+    /// False if the post does not exist.
     /// </returns>
-    Task<bool?> CancelLikePostAsync(Guid postId, Guid userId);
+    Task<bool> CancelLikePostAsync(Guid postId, Guid userId);
 }
