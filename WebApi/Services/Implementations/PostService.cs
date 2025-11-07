@@ -1,9 +1,7 @@
 using System;
-using System.Text.Json.Serialization;
 using BusinessObject.Models;
 using DataAccess.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
-using Org.BouncyCastle.Pqc.Crypto.Falcon;
 using WebApi.Dtos;
 using WebApi.Services.Interfaces;
 
@@ -33,7 +31,7 @@ public class PostService : IPostService
                     AccountId = x.AccountId,
                     AccountName = x.Account.DisplayName,
                     CreatedAt = x.CreatedAt,
-                    PostPicture = x.Pictures.Select(pp => pp.Link).ToList(),
+                    PostPictures = x.Pictures.Select(pp => pp.Link).ToList(),
                     LatestComment =
                         x.Comments.Where(x => x.ParentCommentId == null)
                             .OrderByDescending(c => c.CreatedAt)
@@ -97,7 +95,7 @@ public class PostService : IPostService
         return await query.ToListAsync();
     }
 
-    public async Task<GetPostDetailResponse> GetPostByLinkAsync(string link, Guid userId)
+    public async Task<GetPostDetailResponse?> GetPostByLinkAsync(string link, Guid userId)
     {
         var post = await _unitOfWork.Posts.GetQuery()
             .Where(x => x.Link == link && x.DeletedAt == null)
@@ -116,46 +114,52 @@ public class PostService : IPostService
             })
             .FirstOrDefaultAsync();
 
-        if (post == null)
-        {
-            throw new Exception("Post not found");
-        }
-
         return post;
     }
 
-    public async Task<bool> LikePostAsync(Guid postId, Guid userId)
+    public async Task<bool?> LikePostAsync(Guid postId, Guid userId)
     {
-        var existingLike = await _unitOfWork.PostLikes.GetPostLikeByPostAndAccountAsync(userId, postId);
-
-        Console.WriteLine(existingLike?.Id);
-        if (existingLike == null)
+        var existingPost = await _unitOfWork.Posts.GetByIdAsync(postId);
+        if (existingPost != null && existingPost.DeletedAt == null)
         {
-            await _unitOfWork.PostLikes.AddAsync(new PostLike
-            {
-                PostId = postId,
-                AccountId = userId,
-                CreatedAt = DateTime.UtcNow
-            });
+            var existingLike = await _unitOfWork.PostLikes.GetPostLikeByPostAndAccountAsync(userId, postId);
 
-            return true;
+            if (existingLike == null)
+            {
+                await _unitOfWork.PostLikes.AddAsync(new PostLike
+                {
+                    PostId = postId,
+                    AccountId = userId,
+                    CreatedAt = DateTime.UtcNow
+                });
+
+                return true;
+            }
+
+            return false;
         }
 
-        return false;
+        return null;
+
     }
 
-    public async Task<bool> CancelLikePostAsync(Guid postId, Guid userId)
+    public async Task<bool?> CancelLikePostAsync(Guid postId, Guid userId)
     {
-        var existingLike = await _unitOfWork.PostLikes.GetPostLikeByPostAndAccountAsync(userId, postId);
-
-        Console.WriteLine(existingLike?.Id);
-        if (existingLike != null)
+        var existingPost = await _unitOfWork.Posts.GetByIdAsync(postId);
+        if (existingPost != null && existingPost.DeletedAt == null)
         {
-            await _unitOfWork.PostLikes.DeleteAsync(existingLike);
+            var existingLike = await _unitOfWork.PostLikes.GetPostLikeByPostAndAccountAsync(userId, postId);
 
-            return true;
+            if (existingLike != null)
+            {
+                await _unitOfWork.PostLikes.DeleteAsync(existingLike);
+
+                return true;
+            }
+            return false;
         }
 
-        return false;
+        return null;
+
     }
 }

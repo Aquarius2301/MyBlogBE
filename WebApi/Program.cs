@@ -98,6 +98,7 @@ builder.Services.AddScoped<IPostLikeRepository, PostLikeRepository>();
 
 // Services
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<IPostService, PostService>();
 
 builder.Services.AddCors(options =>

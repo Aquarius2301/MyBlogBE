@@ -10,13 +10,13 @@ public class GetPostsResponse
     public Guid AccountId { get; set; }
     public string AccountName { get; set; } = null!;
     public DateTime CreatedAt { get; set; }
-    public List<string> PostPicture { get; set; } = null!;
+    public List<string> PostPictures { get; set; } = null!;
     public PostLatestComment? LatestComment { get; set; } = null;
     public bool IsFollowing { get; set; }
     public bool IsLiked { get; set; }
     public int LikeCount { get; set; }
     public int CommentCount { get; set; }
-    public int Score => (IsFollowing ? 30 : 0) + LikeCount * 2 + CommentCount * 3 + PostPicture.Count * 1;
+    public int Score => (IsFollowing ? 30 : 0) + LikeCount * 2 + CommentCount * 3 + PostPictures.Count;
 }
 
 public class GetMyPostsResponse
