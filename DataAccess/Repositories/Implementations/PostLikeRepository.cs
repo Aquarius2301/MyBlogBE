@@ -12,10 +12,9 @@ public class PostLikeRepository : Repository<PostLike>, IPostLikeRepository
     {
     }
 
-    public async Task<List<PostLike>> GetPostLikeAsync(Guid postId)
+    public async Task<PostLike?> GetPostLikeByPostAndAccountAsync(Guid accountId, Guid postId)
     {
         return await _context.PostLikes
-                     .Where(pl => pl.PostId == postId)
-                     .ToListAsync();
+                     .FirstOrDefaultAsync(pl => pl.PostId == postId && pl.AccountId == accountId);
     }
 }

@@ -94,12 +94,26 @@ namespace WebApi.Controllers
             {
                 var user = _jwtHelper.GetAccountInfo();
 
-                var res = await _postService.ToggleLikePostAsync(id, user.Id);
+                var res = await _postService.LikePostAsync(id, user.Id);
 
-                return ApiResponse.Success(new
-                {
-                    IsLiked = res
-                });
+                return ApiResponse.Success(res);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Error(ex.Message);
+            }
+        }
+
+        [HttpPost("{id}/cancel-like")]
+        public async Task<IActionResult> CancelLikePost(Guid id)
+        {
+            try
+            {
+                var user = _jwtHelper.GetAccountInfo();
+
+                var res = await _postService.CancelLikePostAsync(id, user.Id);
+
+                return ApiResponse.Success(res);
             }
             catch (Exception ex)
             {

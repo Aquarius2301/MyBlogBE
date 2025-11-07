@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json.Serialization;
 using BusinessObject.Models;
 using DataAccess.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
@@ -123,16 +124,12 @@ public class PostService : IPostService
         return post;
     }
 
-    public async Task<bool> ToggleLikePostAsync(Guid postId, Guid userId)
+    public async Task<bool> LikePostAsync(Guid postId, Guid userId)
     {
-        var existingLike = _unitOfWork.PostLikes.GetQuery()
-            .FirstOrDefault(pl => pl.PostId == postId && pl.AccountId == userId);
-        if (existingLike != null)
-        {
-            await _unitOfWork.PostLikes.DeleteAsync(existingLike);
-            return false;
-        }
-        else
+        var existingLike = await _unitOfWork.PostLikes.GetPostLikeByPostAndAccountAsync(userId, postId);
+
+        Console.WriteLine(existingLike?.Id);
+        if (existingLike == null)
         {
             await _unitOfWork.PostLikes.AddAsync(new PostLike
             {
@@ -143,5 +140,22 @@ public class PostService : IPostService
 
             return true;
         }
+
+        return false;
+    }
+
+    public async Task<bool> CancelLikePostAsync(Guid postId, Guid userId)
+    {
+        var existingLike = await _unitOfWork.PostLikes.GetPostLikeByPostAndAccountAsync(userId, postId);
+
+        Console.WriteLine(existingLike?.Id);
+        if (existingLike != null)
+        {
+            await _unitOfWork.PostLikes.DeleteAsync(existingLike);
+
+            return true;
+        }
+
+        return false;
     }
 }
