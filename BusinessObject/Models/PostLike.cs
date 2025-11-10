@@ -5,7 +5,7 @@ namespace BusinessObject.Models;
 
 [Index(nameof(PostId), nameof(AccountId), IsUnique = true)]
 /// <summary>
-/// Represents a like on a post by a user. 
+/// Represents a like on a post by a user.
 /// Each account can like a specific post only once.
 /// </summary>
 public class PostLike

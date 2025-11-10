@@ -1,8 +1,7 @@
-using System;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace WebAPI.Helpers;
+namespace WebApi.Helpers;
 
 /// <summary>
 /// Provides utility methods for string operations.
@@ -14,7 +13,7 @@ public class StringHelper
     /// </summary>
     /// <param name="length">The desired length of the generated string. Must be greater than 0.</param>
     /// <param name="onlyAlphaNumeric">
-    /// If <c>true</c>, the generated string contains only letters and digits.  
+    /// If <c>true</c>, the generated string contains only letters and digits.
     /// If <c>false</c>, the string is Base64-encoded, which may include symbols.
     /// </param>
     /// <returns>
@@ -37,11 +36,12 @@ public class StringHelper
             var randomBytes = new byte[length];
             using var rng = RandomNumberGenerator.Create();
             rng.GetBytes(randomBytes);
-            return Convert.ToBase64String(randomBytes)
-                         .Substring(0, length)
-                         .Replace("+", "")
-                         .Replace("/", "")
-                         .Replace("=", "");
+            return Convert
+                .ToBase64String(randomBytes)
+                .Substring(0, length)
+                .Replace("+", "")
+                .Replace("/", "")
+                .Replace("=", "");
         }
         else
         {

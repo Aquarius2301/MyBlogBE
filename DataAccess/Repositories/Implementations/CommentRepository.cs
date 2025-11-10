@@ -1,20 +1,29 @@
-using System;
 using BusinessObject;
 using BusinessObject.Models;
-using DataAccess.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace DataAccess.Repositories.Implementations;
 
 public class CommentRepository : Repository<Comment>, ICommentRepository
 {
-    public CommentRepository(MyBlogContext context) : base(context)
+    public CommentRepository(MyBlogContext context)
+        : base(context) { }
+
+    public new async Task<ICollection<Comment>> GetAllAsync(bool includeDeleted = false)
     {
+        var comments = await _context
+            .Comments.Where(p => includeDeleted || p.DeletedAt == null)
+            .ToListAsync();
+
+        return comments;
     }
 
-    public Task<List<Comment>> GetChildCommentsAsync(Guid commentId)
+    public new async Task<Comment?> GetByIdAsync(Guid id, bool includeDeleted = false)
     {
-        return _context.Comments.Where(c => c.ParentCommentId == commentId).ToListAsync();
-    }
+        var comment = await _context.Comments.FirstOrDefaultAsync(p =>
+            p.Id == id && (includeDeleted || p.DeletedAt == null)
+        );
 
+        return comment;
+    }
 }

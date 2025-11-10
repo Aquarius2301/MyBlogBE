@@ -1,25 +1,28 @@
+using System.Globalization;
 using System.Text;
 using BusinessObject;
 using BusinessObject.Seeds;
+using DataAccess;
+using DataAccess.Repositories;
 using DataAccess.Repositories.Implementations;
-using DataAccess.Repositories.Interfaces;
-using DataAccess.UnitOfWork;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using WebApi.Helpers;
+using WebApi.Services;
 using WebApi.Services.Implementations;
-using WebApi.Services.Interfaces;
-using WebAPI.Helpers;
-using WebAPI.Services.Implementations;
+using WebApi.Settings;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
+
 // Create Authorize box on Swagger
 builder.Services.AddSwaggerGen(options =>
 {
@@ -34,85 +37,112 @@ builder.Services.AddSwaggerGen(options =>
         Reference = new OpenApiReference
         {
             Id = JwtBearerDefaults.AuthenticationScheme,
-            Type = ReferenceType.SecurityScheme
-        }
+            Type = ReferenceType.SecurityScheme,
+        },
     };
 
     options.AddSecurityDefinition("Bearer", jwtSecurityScheme);
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        { jwtSecurityScheme, Array.Empty<string>() }
-    });
+    options.AddSecurityRequirement(
+        new OpenApiSecurityRequirement { { jwtSecurityScheme, Array.Empty<string>() } }
+    );
 });
 
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddDataAnnotationsLocalization().AddViewLocalization();
+
 builder.Services.AddDbContext<MyBlogContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
-    .EnableSensitiveDataLogging()
+    options
+        .UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
+        .EnableSensitiveDataLogging()
 );
 
+var jwtSettings = builder.Configuration.GetSection("BaseSettings:JwtSettings");
 
-var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-
-builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+builder.Services.Configure<EmailSettings>(
+    builder.Configuration.GetSection("BaseSettings:EmailSettings")
+);
 builder.Services.Configure<JwtSettings>(jwtSettings);
-builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
+builder.Services.Configure<CloudinarySettings>(
+    builder.Configuration.GetSection("BaseSettings:CloudinarySettings")
+);
+builder.Services.Configure<BaseSettings>(builder.Configuration.GetSection("BaseSettings"));
 
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-}).AddJwtBearer(options =>
-{
-    options.RequireHttpsMetadata = false;
-    options.SaveToken = true;
-    options.TokenValidationParameters = new TokenValidationParameters
+builder
+    .Services.AddAuthentication(options =>
     {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSettings["Issuer"],
-        ValidAudience = jwtSettings["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"]!))
-    };
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.RequireHttpsMetadata = false;
+        options.SaveToken = true;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtSettings["Issuer"],
+            ValidAudience = jwtSettings["Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(jwtSettings["Key"]!)
+            ),
+        };
+    });
+builder.Services.AddLocalization(options => options.ResourcesPath = "");
+
+var supportedCultures = new[] { new CultureInfo("en"), new CultureInfo("vi") };
+
+builder.Services.Configure<RequestLocalizationOptions>(options =>
+{
+    options.DefaultRequestCulture = new RequestCulture("en");
+    options.SupportedCultures = supportedCultures;
+    options.SupportedUICultures = supportedCultures;
+    options.RequestCultureProviders = [new AcceptLanguageHeaderRequestCultureProvider()];
 });
+
 builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();
 
+// Hosts
+builder.Services.AddHostedService<AccountCleanupHelper>();
 
 // Helpers
-builder.Services.AddHostedService<AccountCleanupHelper>();
 builder.Services.AddScoped<JwtHelper>();
 builder.Services.AddScoped<EmailHelper>();
 builder.Services.AddScoped<CloudinaryHelper>();
 
-// Repositories and Unit of Work
-builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+// Repositories
 builder.Services.AddScoped<IAccountRepository, AccountRepository>();
 builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 builder.Services.AddScoped<ICommentLikeRepository, CommentLikeRepository>();
 builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddScoped<IPostLikeRepository, PostLikeRepository>();
+builder.Services.AddScoped<IBaseRepository, BaseRepository>();
 
 // Services
+builder.Services.AddScoped<ILanguageService, LanguageService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<IPostService, PostService>();
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", builder =>
-    {
-        builder.AllowAnyOrigin()
-               .AllowAnyHeader()
-               .AllowAnyMethod();
-    });
+    options.AddPolicy(
+        "AllowAll",
+        builder =>
+        {
+            builder.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+        }
+    );
 });
 
-
 var app = builder.Build();
+
+app.UseRequestLocalization(
+    app.Services.GetRequiredService<IOptions<RequestLocalizationOptions>>().Value
+);
 
 // Comment this line to prevent automatic database migration
 using (var scope = app.Services.CreateScope())
@@ -121,10 +151,12 @@ using (var scope = app.Services.CreateScope())
     Seeder.Seed(db);
 }
 
-app.UseForwardedHeaders(new ForwardedHeadersOptions
-{
-    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-});
+app.UseForwardedHeaders(
+    new ForwardedHeadersOptions
+    {
+        ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+    }
+);
 
 app.UseCors("AllowAll");
 
@@ -139,6 +171,5 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
 
 app.Run();

@@ -4,43 +4,13 @@ using System.Text;
 using BusinessObject.Models;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using WebAPI.Dtos;
+using WebApi.Dtos;
+using WebApi.Settings;
 
-namespace WebAPI.Helpers;
-
-/// <summary>
-/// Configuration settings for JWT token generation and validation.
-/// </summary>
-public class JwtSettings
-{
-    /// <summary>
-    /// The secret key used to sign JWT tokens.
-    /// </summary>
-    public string Key { get; set; } = null!;
-
-    /// <summary>
-    /// The issuer of the JWT token.
-    /// </summary>
-    public string Issuer { get; set; } = null!;
-
-    /// <summary>
-    /// The audience of the JWT token.
-    /// </summary>
-    public string Audience { get; set; } = null!;
-
-    /// <summary>
-    /// Duration of the access token in minutes.
-    /// </summary>
-    public int AccessTokenDurationMinutes { get; set; }
-
-    /// <summary>
-    /// Duration of the refresh token in days.
-    /// </summary>
-    public int RefreshTokenDurationDays { get; set; }
-}
+namespace WebApi.Helpers;
 
 /// <summary>
-/// Helper class for generating JWT access tokens, refresh tokens, 
+/// Helper class for generating JWT access tokens, refresh tokens,
 /// and retrieving the current authenticated user's information.
 /// </summary>
 public class JwtHelper
@@ -87,7 +57,7 @@ public class JwtHelper
         var claims = new[]
         {
             new Claim(JwtRegisteredClaimNames.Sub, account.Id.ToString()),
-            new Claim(JwtRegisteredClaimNames.UniqueName, account.Username)
+            new Claim(JwtRegisteredClaimNames.UniqueName, account.Username),
         };
 
         var token = new JwtSecurityToken(
@@ -129,8 +99,7 @@ public class JwtHelper
         return new UserInfoResponse
         {
             Id = Guid.Parse(accountId ?? ""),
-            Username = accountUsername ?? ""
+            Username = accountUsername ?? "",
         };
     }
 }
-

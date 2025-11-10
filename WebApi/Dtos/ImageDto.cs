@@ -1,5 +1,3 @@
-using System;
-
 namespace WebApi.Dtos;
 
 public class ImageDto

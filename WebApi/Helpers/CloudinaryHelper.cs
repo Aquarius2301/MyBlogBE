@@ -3,29 +3,9 @@ using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
 using Microsoft.Extensions.Options;
 using WebApi.Dtos;
+using WebApi.Settings;
 
 namespace WebApi.Helpers;
-
-/// <summary>
-/// Configuration settings for Cloudinary integration.
-/// </summary>
-public class CloudinarySettings
-{
-    /// <summary>
-    /// The Cloudinary cloud name.
-    /// </summary>
-    public string CloudName { get; set; } = null!;
-
-    /// <summary>
-    /// The Cloudinary API key.
-    /// </summary>
-    public string ApiKey { get; set; } = null!;
-
-    /// <summary>
-    /// The Cloudinary API secret key.
-    /// </summary>
-    public string ApiSecret { get; set; } = null!;
-}
 
 /// <summary>
 /// Helper class for uploading and deleting images using Cloudinary.
@@ -60,7 +40,7 @@ public class CloudinaryHelper
     {
         var uploadParams = new ImageUploadParams()
         {
-            File = new FileDescription(file.FileName, file.OpenReadStream())
+            File = new FileDescription(file.FileName, file.OpenReadStream()),
         };
 
         var uploadResult = _cloudinary.Upload(uploadParams);
@@ -70,7 +50,7 @@ public class CloudinaryHelper
             return new ImageDto
             {
                 Key = uploadResult.PublicId,
-                Link = uploadResult.SecureUrl.ToString()
+                Link = uploadResult.SecureUrl.ToString(),
             };
         }
         else

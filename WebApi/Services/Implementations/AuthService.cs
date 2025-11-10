@@ -1,67 +1,87 @@
-using System;
 using BusinessObject.Enums;
 using BusinessObject.Models;
-using DataAccess.UnitOfWork;
-using Microsoft.EntityFrameworkCore;
+using DataAccess;
+using Microsoft.Extensions.Options;
+using WebApi.Dtos;
 using WebApi.Helpers;
-using WebAPI.Dtos;
-using WebAPI.Helpers;
+using WebApi.Settings;
 
-
-namespace WebAPI.Services.Implementations;
+namespace WebApi.Services.Implementations;
 
 public class AuthService : IAuthService
 {
-    private JwtHelper _jwtHelper;
-    private IUnitOfWork _unitOfWork;
+    private IBaseRepository _repository;
+    private readonly JwtHelper _jwtHelper;
     private readonly EmailHelper _emailHelper;
-    public AuthService(JwtHelper jwtHelper, IUnitOfWork unitOfWork, EmailHelper emailHelper)
+    private readonly BaseSettings _settings;
+
+    public AuthService(
+        IBaseRepository repository,
+        JwtHelper jwtHelper,
+        EmailHelper emailHelper,
+        IOptions<BaseSettings> options
+    )
     {
+        _repository = repository;
         _jwtHelper = jwtHelper;
-        _unitOfWork = unitOfWork;
         _emailHelper = emailHelper;
+        _settings = options.Value;
+    }
+
+    public Task<Account?> GetByUsernameAsync(string username)
+    {
+        return _repository.Accounts.GetByUsernameAsync(username);
+    }
+
+    public Task<Account?> GetByEmailAsync(string email)
+    {
+        return _repository.Accounts.GetByEmailAsync(email);
     }
 
     public async Task<AuthResponse?> GetAuthenticateAsync(string username, string password)
     {
-        var account = await _unitOfWork.Accounts.GetByUsernameAsync(username);
+        var account = await _repository.Accounts.GetByUsernameAsync(username);
 
-        if (account == null || account.Status == StatusType.InActive
-            || !PasswordHasher.VerifyPassword(password, account.HashedPassword))
+        if (
+            account == null
+            || !PasswordHasherHelper.VerifyPassword(password, account.HashedPassword)
+        )
         {
             return null;
         }
 
         account.AccessToken = _jwtHelper.GenerateAccessToken(account);
         account.RefreshToken = _jwtHelper.GenerateRefreshToken();
-        account.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(_jwtHelper.RefreshTokenDurationDays);
-        await _unitOfWork.Accounts.UpdateAsync(account);
+        account.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(
+            _settings.JwtSettings.RefreshTokenDurationDays
+        );
+
+        await _repository.SaveChangesAsync();
 
         return new AuthResponse
         {
             AccessToken = account.AccessToken,
-            RefreshToken = account.RefreshToken
+            RefreshToken = account.RefreshToken,
         };
     }
 
     public async Task<AuthResponse?> GetRefreshTokenAsync(string refreshToken)
     {
-        var account = await _unitOfWork.Accounts.GetByRefreshTokenAsync(refreshToken);
+        var account = await _repository.Accounts.GetByRefreshTokenAsync(refreshToken);
 
-        if (account != null && account.Status != StatusType.InActive
-             && account.RefreshToken == refreshToken)
+        if (account != null && account.RefreshToken == refreshToken)
         {
             if (account.RefreshTokenExpiryTime >= DateTime.UtcNow)
             {
                 account.AccessToken = _jwtHelper.GenerateAccessToken(account);
                 account.RefreshToken = _jwtHelper.GenerateRefreshToken();
 
-                await _unitOfWork.Accounts.UpdateAsync(account);
+                await _repository.SaveChangesAsync();
 
                 return new AuthResponse
                 {
                     AccessToken = account.AccessToken,
-                    RefreshToken = account.RefreshToken
+                    RefreshToken = account.RefreshToken,
                 };
             }
             else
@@ -70,7 +90,7 @@ public class AuthService : IAuthService
                 account.RefreshToken = null;
                 account.RefreshTokenExpiryTime = null;
 
-                await _unitOfWork.Accounts.UpdateAsync(account);
+                await _repository.SaveChangesAsync();
 
                 return null;
             }
@@ -81,7 +101,7 @@ public class AuthService : IAuthService
 
     public async Task<bool> RemoveRefresh(Guid accountId)
     {
-        var account = await _unitOfWork.Accounts.GetByIdAsync(accountId);
+        var account = await _repository.Accounts.GetByIdAsync(accountId);
 
         if (account != null)
         {
@@ -89,7 +109,7 @@ public class AuthService : IAuthService
             account.RefreshToken = null;
             account.RefreshTokenExpiryTime = null;
 
-            await _unitOfWork.Accounts.UpdateAsync(account);
+            await _repository.SaveChangesAsync();
 
             return true;
         }
@@ -97,20 +117,10 @@ public class AuthService : IAuthService
         return false;
     }
 
-    public async Task<(bool, string?)> RegisterAccountAsync(RegisterRequest request)
+    public async Task RegisterAccountAsync(RegisterRequest request)
     {
-        if (await _unitOfWork.Accounts.GetByUsernameAsync(request.Username) != null)
-        {
-            return (false, "user");
-        }
-
-        if (await _unitOfWork.Accounts.GetByEmailAsync(request.Email) != null)
-        {
-            return (false, "email");
-        }
-
-        var tokenLength = _emailHelper.TokenLength;
-        var tokenTimeout = _emailHelper.TokenTimeOut;
+        var tokenLength = _settings.TokenLength;
+        var tokenTimeout = _settings.TokenExpiryMinutes;
         var confirmCode = StringHelper.GenerateRandomString(tokenLength, true);
         var currentTime = DateTime.UtcNow;
 
@@ -126,29 +136,30 @@ public class AuthService : IAuthService
             EmailVerifiedCode = confirmCode,
             VerificationType = VerificationType.Register,
             EmailVerifiedCodeExpiry = currentTime.AddMinutes(tokenTimeout),
-            HashedPassword = PasswordHasher.HashPassword(request.Password),
+            HashedPassword = PasswordHasherHelper.HashPassword(request.Password),
             Status = StatusType.InActive,
             CreatedAt = currentTime,
         };
 
-        await _unitOfWork.Accounts.AddAsync(newAccount);
-
-        return (true, confirmCode);
+        _repository.Accounts.Add(newAccount);
+        await _repository.SaveChangesAsync();
     }
 
     public async Task<bool> ConfirmRegisterAccountAsync(string confirmCode)
     {
-        var account = await _unitOfWork.Accounts.GetByConfirmCodeAsync(confirmCode);
+        var account = await _repository.Accounts.GetByEmailVerifiedCode(
+            confirmCode,
+            VerificationType.Register
+        );
 
-        if (account != null && account.VerificationType == VerificationType.Register
-            && DateTime.UtcNow <= account.EmailVerifiedCodeExpiry)
+        if (account != null && DateTime.UtcNow <= account.EmailVerifiedCodeExpiry)
         {
             account.EmailVerifiedCode = null;
             account.VerificationType = null;
             account.EmailVerifiedCodeExpiry = null;
             account.Status = StatusType.Active;
 
-            await _unitOfWork.Accounts.UpdateAsync(account);
+            await _repository.SaveChangesAsync();
             return true;
         }
 
@@ -157,15 +168,17 @@ public class AuthService : IAuthService
 
     public async Task<string?> ConfirmForgotPasswordAccountAsync(string confirmCode)
     {
-        var account = await _unitOfWork.Accounts.GetByConfirmCodeAsync(confirmCode);
+        var account = await _repository.Accounts.GetByEmailVerifiedCode(
+            confirmCode,
+            VerificationType.ForgotPassword
+        );
 
-        if (account != null && account.VerificationType == VerificationType.ForgotPassword
-            && DateTime.UtcNow <= account.EmailVerifiedCodeExpiry)
+        if (account != null && DateTime.UtcNow <= account.EmailVerifiedCodeExpiry)
         {
             account.VerificationType = VerificationType.ChangePassword;
             account.EmailVerifiedCodeExpiry = null;
 
-            await _unitOfWork.Accounts.UpdateAsync(account);
+            await _repository.SaveChangesAsync();
             return confirmCode;
         }
 
@@ -174,24 +187,23 @@ public class AuthService : IAuthService
 
     public async Task<bool> ForgotPasswordAsync(string identifier)
     {
-        var tokenTimeout = _emailHelper.TokenTimeOut;
-        var account = await _unitOfWork.Accounts.GetQuery()
-                        .FirstOrDefaultAsync(
-                            x => (x.Email == identifier || x.Username == identifier)
-                                && (x.Status != StatusType.InActive)
-                                && x.DeletedAt == null
-                        );
+        var tokenTimeout = _settings.TokenExpiryMinutes;
+        var account = await _repository.Accounts.GetByUsernameOrEmailAsync(identifier);
 
         if (account != null)
         {
-            var confirmCode = StringHelper.GenerateRandomString(_emailHelper.TokenLength);
-            await _emailHelper.SendForgotPasswordEmailAsync(account.Email, account.Username, confirmCode);
+            var confirmCode = StringHelper.GenerateRandomString(_settings.TokenLength);
+            await _emailHelper.SendForgotPasswordEmailAsync(
+                account.Email,
+                account.Username,
+                confirmCode
+            );
 
             account.EmailVerifiedCode = confirmCode;
             account.VerificationType = VerificationType.ForgotPassword;
             account.EmailVerifiedCodeExpiry = DateTime.UtcNow.AddMinutes(tokenTimeout);
 
-            await _unitOfWork.Accounts.UpdateAsync(account);
+            await _repository.SaveChangesAsync();
             return true;
         }
 
@@ -200,16 +212,19 @@ public class AuthService : IAuthService
 
     public async Task<bool> ResetPasswordAsync(string confirmCode, string newPassowrd)
     {
-        var account = await _unitOfWork.Accounts.GetByConfirmCodeAsync(confirmCode);
+        var account = await _repository.Accounts.GetByEmailVerifiedCode(
+            confirmCode,
+            VerificationType.ChangePassword
+        );
 
-        if (account != null && account.VerificationType == VerificationType.ChangePassword)
+        if (account != null)
         {
             account.VerificationType = null;
             account.EmailVerifiedCodeExpiry = null;
             account.EmailVerifiedCode = null;
-            account.HashedPassword = PasswordHasher.HashPassword(newPassowrd);
+            account.HashedPassword = PasswordHasherHelper.HashPassword(newPassowrd);
 
-            await _unitOfWork.Accounts.UpdateAsync(account);
+            await _repository.SaveChangesAsync();
 
             return true;
         }

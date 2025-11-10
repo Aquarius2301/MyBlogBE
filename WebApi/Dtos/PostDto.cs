@@ -1,5 +1,3 @@
-using System;
-
 namespace WebApi.Dtos;
 
 public class GetPostsResponse
@@ -16,7 +14,8 @@ public class GetPostsResponse
     public bool IsLiked { get; set; }
     public int LikeCount { get; set; }
     public int CommentCount { get; set; }
-    public int Score => (IsFollowing ? 30 : 0) + LikeCount * 2 + CommentCount * 3 + PostPictures.Count;
+    public int Score =>
+        (IsFollowing ? 30 : 0) + LikeCount * 2 + CommentCount * 3 + PostPictures.Count;
 }
 
 public class GetMyPostsResponse
@@ -67,4 +66,3 @@ public class GetPostDetailResponse
 //     public bool IsLiked { get; set; }
 //     public DateTime CreatedAt { get; set; }
 // }
-

@@ -1,11 +1,19 @@
-using System;
+using WebApi.Settings;
 
 namespace WebApi.Dtos;
 
 public class PaginationRequest
 {
-    public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = 10;
+    public DateTime? Cursor { get; set; }
+    public int PageSize { get; set; }
+
+    public void ApplyDefaults(BaseSettings settings)
+    {
+        if (PageSize <= 0)
+            PageSize = settings.PageSize;
+        else if (PageSize > settings.MaxPageSize)
+            PageSize = settings.MaxPageSize;
+    }
 }
 
 public class PaginationResponse
@@ -14,5 +22,3 @@ public class PaginationResponse
     public DateTime? Cursor { get; set; }
     public int PageSize { get; set; }
 }
-
-

@@ -1,6 +1,4 @@
-using System;
-
-namespace WebAPI.Dtos;
+namespace WebApi.Dtos;
 
 public class AuthRequest
 {
@@ -54,5 +52,3 @@ public class ResetPasswordRequest
     public string ConfirmCode { get; set; } = null!;
     public string NewPassword { get; set; } = null!;
 }
-
-

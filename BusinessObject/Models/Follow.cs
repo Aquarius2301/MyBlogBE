@@ -1,4 +1,3 @@
-using System;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 
@@ -6,7 +5,7 @@ namespace BusinessObject.Models;
 
 [Index(nameof(AccountId), nameof(FollowingId), IsUnique = true)]
 /// <summary>
-/// Represents a following relationship between two accounts. 
+/// Represents a following relationship between two accounts.
 /// Each account can follow another account only once.
 /// </summary>
 public class Follow

@@ -3,7 +3,6 @@ using BusinessObject.Models;
 
 namespace BusinessObject.Seeds;
 
-
 public class Seeder
 {
     public static void Seed(MyBlogContext context)
@@ -13,9 +12,7 @@ public class Seeder
         CreatePosts(context);
         CreatePostLikes(context);
         CreateComments(context);
-
     }
-
 
     private static void CreateAccounts(MyBlogContext context)
     {
@@ -26,25 +23,27 @@ public class Seeder
             for (int i = 0; i < 20; i++)
             {
                 var id = Guid.NewGuid();
-                accounts.Add(new Account
-                {
-                    Id = id,
-                    Username = $"user{i + 1}",
-                    DisplayName = $"User {i + 1}",
-                    DateOfBirth = new DateOnly(1990 + (i % 10), 1 + (i % 12), 1 + (i % 28)),
-                    HashedPassword =
-                        "100000.2WBYMJzOMwL6A4WFMqocgA==.mOhKh2DlCdEv5kF51VSfWo9ddeeeayxz9kH7lwI4EAI=",
-                    Status = StatusType.Active,
-                    Email = $"user{i + 1}@example.com",
-                    Picture = new Picture
+                accounts.Add(
+                    new Account
                     {
-                        Id = Guid.NewGuid(),
-                        AccountId = id,
-                        PublicId = $"profile_user{i + 1}",
-                        Link = $"/profiles/user{i + 1}/avatar.jpg",
-                    },
-                    CreatedAt = DateTime.UtcNow.AddDays(Random.Shared.Next(-100, 0)),
-                });
+                        Id = id,
+                        Username = $"user{i + 1}",
+                        DisplayName = $"User {i + 1}",
+                        DateOfBirth = new DateOnly(1990 + (i % 10), 1 + (i % 12), 1 + (i % 28)),
+                        HashedPassword =
+                            "100000.2WBYMJzOMwL6A4WFMqocgA==.mOhKh2DlCdEv5kF51VSfWo9ddeeeayxz9kH7lwI4EAI=",
+                        Status = StatusType.Active,
+                        Email = $"user{i + 1}@example.com",
+                        Picture = new Picture
+                        {
+                            Id = Guid.NewGuid(),
+                            AccountId = id,
+                            PublicId = $"profile_user{i + 1}",
+                            Link = $"/profiles/user{i + 1}/avatar.jpg",
+                        },
+                        CreatedAt = DateTime.UtcNow.AddDays(Random.Shared.Next(-100, 0)),
+                    }
+                );
             }
 
             context.Accounts.AddRange(accounts);
@@ -68,21 +67,26 @@ public class Seeder
                 {
                     var id = Guid.NewGuid();
                     var PostPicsCount = Random.Shared.Next(1, 3);
-                    posts.Add(new Post
-                    {
-                        Id = id,
-                        Link = $"post{account.Username}{i + 1}",
-                        Content = $"This is post {i + 1} by {account.DisplayName}.",
-                        AccountId = account.Id,
-                        CreatedAt = DateTime.UtcNow.AddDays(Random.Shared.Next(-100, 0)),
-                        Pictures = Enumerable.Range(1, PostPicsCount).Select(j => new Picture
+                    posts.Add(
+                        new Post
                         {
-                            Id = Guid.NewGuid(),
-                            PostId = id,
-                            PublicId = $"post_{account.Username}_{id}_pic{j}",
-                            Link = $"/posts/{account.Username}/post_{id}/picture{j}.jpg",
-                        }).ToList(),
-                    });
+                            Id = id,
+                            Link = $"post{account.Username}{i + 1}",
+                            Content = $"This is post {i + 1} by {account.DisplayName}.",
+                            AccountId = account.Id,
+                            CreatedAt = DateTime.UtcNow.AddDays(Random.Shared.Next(-100, 0)),
+                            Pictures = Enumerable
+                                .Range(1, PostPicsCount)
+                                .Select(j => new Picture
+                                {
+                                    Id = Guid.NewGuid(),
+                                    PostId = id,
+                                    PublicId = $"post_{account.Username}_{id}_pic{j}",
+                                    Link = $"/posts/{account.Username}/post_{id}/picture{j}.jpg",
+                                })
+                                .ToList(),
+                        }
+                    );
                 }
             }
 
@@ -110,13 +114,15 @@ public class Seeder
 
                 foreach (var acc in likedAccounts)
                 {
-                    postLikes.Add(new PostLike
-                    {
-                        Id = Guid.NewGuid(),
-                        PostId = post.Id,
-                        AccountId = acc.Id,
-                        CreatedAt = DateTime.UtcNow.AddDays(Random.Shared.Next(-100, 0))
-                    });
+                    postLikes.Add(
+                        new PostLike
+                        {
+                            Id = Guid.NewGuid(),
+                            PostId = post.Id,
+                            AccountId = acc.Id,
+                            CreatedAt = DateTime.UtcNow.AddDays(Random.Shared.Next(-100, 0)),
+                        }
+                    );
                 }
             }
 
@@ -139,16 +145,21 @@ public class Seeder
             {
                 int followCount = rand.Next(1, 4);
 
-                var followAccounts = existingAccounts.OrderBy(a => rand.Next()).Take(followCount).ToList();
+                var followAccounts = existingAccounts
+                    .OrderBy(a => rand.Next())
+                    .Take(followCount)
+                    .ToList();
 
                 foreach (var followAcc in followAccounts)
                 {
-                    follows.Add(new Follow
-                    {
-                        Id = Guid.NewGuid(),
-                        FollowingId = followAcc.Id,
-                        AccountId = acc.Id,
-                    });
+                    follows.Add(
+                        new Follow
+                        {
+                            Id = Guid.NewGuid(),
+                            FollowingId = followAcc.Id,
+                            AccountId = acc.Id,
+                        }
+                    );
                 }
             }
 
@@ -185,15 +196,18 @@ public class Seeder
                         ParentCommentId = null,
                         ReplyAccountId = null,
                         PostId = post.Id,
-                        Pictures = Enumerable.Range(1, commentPicsCount).Select(j => new Picture
-                        {
-                            Id = Guid.NewGuid(),
-                            PublicId = $"comment_{account.Username}_{id}_pic{j}",
-                            CommentId = id,
-                            Link = $"/comments/{account.Username}/comment_{id}/picture{j}.jpg",
-                        }).ToList(),
+                        Pictures = Enumerable
+                            .Range(1, commentPicsCount)
+                            .Select(j => new Picture
+                            {
+                                Id = Guid.NewGuid(),
+                                PublicId = $"comment_{account.Username}_{id}_pic{j}",
+                                CommentId = id,
+                                Link = $"/comments/{account.Username}/comment_{id}/picture{j}.jpg",
+                            })
+                            .ToList(),
                         Content = $"Parent comment from {account.Username}",
-                        CreatedAt = DateTime.UtcNow.AddDays(-rand.Next(100))
+                        CreatedAt = DateTime.UtcNow.AddDays(-rand.Next(100)),
                     };
 
                     context.Comments.Add(parentComment);
@@ -212,16 +226,20 @@ public class Seeder
                             ParentCommentId = parentComment.Id,
                             ReplyAccountId = parentComment.AccountId,
                             PostId = post.Id,
-                            Pictures = Enumerable.Range(1, commentPicsChildCount).Select(k => new Picture
-                            {
-                                Id = Guid.NewGuid(),
-                                CommentId = id,
-                                PublicId = $"comment_{childAccount.Username}_{id}_pic{k}",
-                                Link = $"/comments/{childAccount.Username}/comment_{id}/picture{k}.jpg",
-                            }).ToList(),
+                            Pictures = Enumerable
+                                .Range(1, commentPicsChildCount)
+                                .Select(k => new Picture
+                                {
+                                    Id = Guid.NewGuid(),
+                                    CommentId = id,
+                                    PublicId = $"comment_{childAccount.Username}_{id}_pic{k}",
+                                    Link =
+                                        $"/comments/{childAccount.Username}/comment_{id}/picture{k}.jpg",
+                                })
+                                .ToList(),
                             Content = $"Reply comment {j + 1} from {childAccount.Username}",
                             CreatedAt = DateTime.UtcNow.AddDays(-rand.Next(100)),
-                            UpdatedAt = DateTime.UtcNow.AddDays(-rand.Next(100))
+                            UpdatedAt = DateTime.UtcNow.AddDays(-rand.Next(100)),
                         };
 
                         context.Comments.Add(childComment);
@@ -229,9 +247,6 @@ public class Seeder
                     }
                 }
             }
-
-
         }
     }
-
 }

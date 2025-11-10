@@ -1,5 +1,3 @@
-using System;
-
 namespace WebApi.Dtos;
 
 public class GetCommentsResponse
@@ -14,7 +12,6 @@ public class GetCommentsResponse
     public int CommentCount { get; set; }
     public bool IsLiked { get; set; }
     public int Score => CommentCount * 3 + LikeCount * 2 + CommentPictures.Count;
-
 }
 
 public class GetChildCommentsResponse
@@ -30,6 +27,4 @@ public class GetChildCommentsResponse
     public int CommentCount { get; set; }
     public bool IsLiked { get; set; }
     // public int Score => CommentCount * 3 + LikeCount * 2 + CommentPictures.Count;
-
 }
-

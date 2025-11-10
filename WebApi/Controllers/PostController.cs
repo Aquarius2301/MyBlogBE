@@ -1,168 +1,240 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using WebApi.Dtos;
 using WebApi.Helpers;
-using WebApi.Services.Interfaces;
-using WebAPI.Dtos;
-using WebAPI.Helpers;
+using WebApi.Services;
+using WebApi.Settings;
 
-namespace WebApi.Controllers
+namespace WebApi.Controllers;
+
+[Authorize]
+[Route("api/posts")]
+[ApiController]
+public class PostController : ControllerBase
 {
-    [Authorize]
-    [Route("api/posts")]
-    [ApiController]
-    public class PostController : ControllerBase
+    private readonly IPostService _service;
+    private readonly ILanguageService _lang;
+    private readonly JwtHelper _jwtHelper;
+    private readonly CloudinaryHelper _cloudinaryHelper;
+    private readonly BaseSettings _settings;
+
+    public PostController(
+        IPostService service,
+        ILanguageService lang,
+        JwtHelper jwtHelper,
+        CloudinaryHelper cloudinaryHelper,
+        IOptions<BaseSettings> options
+    )
     {
-        private readonly IPostService _postService;
-        private readonly JwtHelper _jwtHelper;
-        private readonly CloudinaryHelper _cloudinaryHelper;
+        _service = service;
+        _lang = lang;
+        _jwtHelper = jwtHelper;
+        _cloudinaryHelper = cloudinaryHelper;
+        _settings = options.Value;
+    }
 
-        public PostController(IPostService postService, JwtHelper jwtHelper, CloudinaryHelper cloudinaryHelper)
+    /// <summary>
+    /// Retrieves a paginated list of all posts in the system.
+    /// </summary>
+    /// <param name="request">Pagination parameters including cursor and page size.</param>
+    /// <returns>
+    /// 200 - Returns paginated list of posts with cursor for next page.
+    /// 500 - Returns error message if exception occurs.
+    /// </returns>
+    [HttpGet("")]
+    public async Task<IActionResult> GetPosts([FromQuery] PaginationRequest request)
+    {
+        try
         {
-            _postService = postService;
-            _jwtHelper = jwtHelper;
-            _cloudinaryHelper = cloudinaryHelper;
-        }
+            request.ApplyDefaults(_settings);
 
-        /// <summary>
-        /// Get a paginated list of posts for the home feed.
-        /// </summary>
-        /// <param name="cursor">Timestamp of the last loaded post (used for pagination).</param>
-        /// <param name="pageSize">Number of posts to return per request.</param>
-        /// <returns>
-        /// <para>200: Returns a <see cref="PaginationResponse"/> containing a list of posts.</para>
-        /// <para>500: If an unexpected error occurs.</para>
-        /// </returns>
-        [HttpGet("")]
-        public async Task<IActionResult> GetPosts([FromQuery] DateTime? cursor, int pageSize = 10)
-        {
-            try
-            {
-                var user = _jwtHelper.GetAccountInfo();
+            var user = _jwtHelper.GetAccountInfo();
 
-                var res = await _postService.GetPostsListAsync(cursor, user.Id, pageSize);
+            var res = await _service.GetPostsListAsync(request.Cursor, user.Id, request.PageSize);
 
-                return ApiResponse.Success(new PaginationResponse
+            return ApiResponse.Success(
+                new PaginationResponse
                 {
                     Items = res,
                     Cursor = res.Count() > 0 ? res.Last().CreatedAt : null,
-                    PageSize = pageSize
-                });
-            }
-            catch (Exception ex)
-            {
-                return ApiResponse.Error(ex.Message);
-            }
+                    PageSize = request.PageSize,
+                }
+            );
         }
-
-        /// <summary>
-        /// Get a paginated list of posts created by the current user.
-        /// </summary>
-        /// <param name="cursor">Timestamp of the last loaded post (used for pagination).</param>
-        /// <param name="pageSize">Number of posts to return per request.</param>
-        /// <returns>
-        /// <para>200: Returns a <see cref="PaginationResponse"/> containing the user's posts.</para>
-        /// <para>500: If an unexpected error occurs.</para>
-        /// </returns>
-        [HttpGet("me")]
-        public async Task<IActionResult> GetMyPosts([FromQuery] DateTime? cursor, int pageSize = 10)
+        catch (Exception ex)
         {
-            try
-            {
-                var user = _jwtHelper.GetAccountInfo();
+            return ApiResponse.Error(ex.Message);
+        }
+    }
 
-                var res = await _postService.GetMyPostsListAsync(cursor, user.Id, pageSize);
+    /// <summary>
+    /// Retrieves a paginated list of posts created by the authenticated user.
+    /// </summary>
+    /// <param name="request">Pagination parameters including cursor and page size.</param>
+    /// <returns>
+    /// 200 - Returns paginated list of user's own posts with cursor for next page.
+    /// 500 - Returns error message if exception occurs.
+    /// </returns>
+    [HttpGet("me")]
+    public async Task<IActionResult> GetMyPosts([FromQuery] PaginationRequest request)
+    {
+        try
+        {
+            request.ApplyDefaults(_settings);
 
-                return ApiResponse.Success(new PaginationResponse
+            var user = _jwtHelper.GetAccountInfo();
+
+            var res = await _service.GetMyPostsListAsync(request.Cursor, user.Id, request.PageSize);
+
+            return ApiResponse.Success(
+                new PaginationResponse
                 {
                     Items = res,
                     Cursor = res.Count() > 0 ? res.Last().CreatedAt : null,
-                    PageSize = pageSize
-                });
-            }
-            catch (Exception ex)
-            {
-                return ApiResponse.Error(ex.Message);
-            }
+                    PageSize = request.PageSize,
+                }
+            );
         }
-
-        /// <summary>
-        /// Get the details of a post by its link (slug).
-        /// </summary>
-        /// <param name="link">The slug of the post.</param>
-        /// <returns>
-        /// <para>200: Returns a detailed post object.</para>
-        /// <para>404: If the post is not found.</para>
-        /// <para>500: If an unexpected error occurs.</para>
-        /// </returns>
-        [HttpGet("link/{link}")]
-        public async Task<IActionResult> GetPostsByLink(string link)
+        catch (Exception ex)
         {
-            try
-            {
-                var user = _jwtHelper.GetAccountInfo();
-
-                var res = await _postService.GetPostByLinkAsync(link, user.Id);
-
-                return res != null ? ApiResponse.Success(res) : ApiResponse.NotFound("Post not found");
-            }
-            catch (Exception ex)
-            {
-                return ApiResponse.Error(ex.Message);
-            }
+            return ApiResponse.Error(ex.Message);
         }
+    }
 
-        /// <summary>
-        /// Like a post.
-        /// </summary>
-        /// <param name="id">The ID of the post to like.</param>
-        /// <returns>
-        /// <para>200: Returns true if the like is successful.</para>
-        /// <para>404: If the post does not exist.</para>
-        /// <para>500: If an unexpected error occurs.</para>
-        /// </returns>
-        [HttpPost("{id}/like")]
-        public async Task<IActionResult> LikePost(Guid id)
+    /// <summary>
+    /// Retrieves a specific post by its unique link identifier.
+    /// </summary>
+    /// <param name="link">The unique link/slug identifier of the post.</param>
+    /// <returns>
+    /// 200 - Returns the post details if found.
+    /// 404 - Returns error if post with specified link does not exist.
+    /// 500 - Returns error message if exception occurs.
+    /// </returns>
+    [HttpGet("link/{link}")]
+    public async Task<IActionResult> GetPostsByLink(string link)
+    {
+        try
         {
-            try
-            {
-                var user = _jwtHelper.GetAccountInfo();
+            var user = _jwtHelper.GetAccountInfo();
 
-                var res = await _postService.LikePostAsync(id, user.Id);
+            var res = await _service.GetPostByLinkAsync(link, user.Id);
 
-                return res ? ApiResponse.Success(res) : ApiResponse.NotFound("Post not found");
-            }
-            catch (Exception ex)
-            {
-                return ApiResponse.Error(ex.Message);
-            }
+            return res != null
+                ? ApiResponse.Success(res)
+                : ApiResponse.NotFound(_lang.Get("NoPost"));
         }
-
-        /// <summary>
-        /// Cancel a previously liked post.
-        /// </summary>
-        /// <param name="id">The ID of the post to cancel like.</param>
-        /// <returns>
-        /// <para>200: Returns true if the cancel like is successful.</para>
-        /// <para>404: If the post does not exist.</para>
-        /// <para>500: If an unexpected error occurs.</para>
-        /// </returns>
-        [HttpDelete("{id}/cancel-like")]
-        public async Task<IActionResult> CancelLikePost(Guid id)
+        catch (Exception ex)
         {
-            try
-            {
-                var user = _jwtHelper.GetAccountInfo();
-
-                var res = await _postService.CancelLikePostAsync(id, user.Id);
-
-                return res ? ApiResponse.Success(res) : ApiResponse.NotFound("Post not found");
-            }
-            catch (Exception ex)
-            {
-                return ApiResponse.Error(ex.Message);
-            }
+            return ApiResponse.Error(ex.Message);
         }
+    }
 
+    /// <summary>
+    /// Likes a specific post.
+    /// </summary>
+    /// <param name="id">The unique identifier of the post to like.</param>
+    /// <returns>
+    /// 200 - Returns success if post is liked successfully.
+    /// 400 - Returns error if post does not exist.
+    /// 500 - Returns error message if exception occurs.
+    /// </returns>
+    [HttpPost("{id}/like")]
+    public async Task<IActionResult> LikePost(Guid id)
+    {
+        try
+        {
+            if (await _service.GetByIdAsync(id) == null)
+            {
+                return ApiResponse.BadRequest(_lang.Get("NoPost"));
+            }
+
+            var user = _jwtHelper.GetAccountInfo();
+
+            return ApiResponse.Success();
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse.Error(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Removes a like from a specific post.
+    /// </summary>
+    /// <param name="id">The unique identifier of the post to unlike.</param>
+    /// <returns>
+    /// 200 - Returns success if like is removed successfully.
+    /// 400 - Returns error if post does not exist.
+    /// 500 - Returns error message if exception occurs.
+    /// </returns>
+    [HttpDelete("{id}/cancel-like")]
+    public async Task<IActionResult> CancelLikePost(Guid id)
+    {
+        try
+        {
+            if (await _service.GetByIdAsync(id) == null)
+            {
+                return ApiResponse.BadRequest(_lang.Get("NoPost"));
+            }
+
+            var user = _jwtHelper.GetAccountInfo();
+
+            await _service.CancelLikePostAsync(id, user.Id);
+
+            return ApiResponse.Success();
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse.Error(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Retrieves a paginated list of comments for a specific post.
+    /// </summary>
+    /// <param name="postId">The unique identifier of the post.</param>
+    /// <param name="request">Pagination parameters including cursor and page size.</param>
+    /// <returns>
+    /// 200 - Returns paginated list of comments with cursor for next page.
+    /// 404 - Returns error if post does not exist.
+    /// 500 - Returns error message if exception occurs.
+    /// </returns>
+    [HttpGet("{postId}/comments")]
+    public async Task<IActionResult> GetPostComments(
+        Guid postId,
+        [FromQuery] PaginationRequest request
+    )
+    {
+        try
+        {
+            if (await _service.GetByIdAsync(postId) == null)
+            {
+                return ApiResponse.NotFound(_lang.Get("NoPost"));
+            }
+
+            request.ApplyDefaults(_settings);
+
+            var user = _jwtHelper.GetAccountInfo();
+            var res = await _service.GetPostCommentsList(
+                postId,
+                request.Cursor,
+                user.Id,
+                request.PageSize
+            );
+
+            return ApiResponse.Success(
+                new PaginationResponse
+                {
+                    Items = res,
+                    Cursor = res.Count() > 0 ? res.Last().CreatedAt : null,
+                    PageSize = request.PageSize,
+                }
+            );
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse.Error(ex.Message);
+        }
     }
 }

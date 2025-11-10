@@ -3,8 +3,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BusinessObject.Models;
 
-using Microsoft.EntityFrameworkCore;
-
 [Index(nameof(Link), IsUnique = true)]
 /// <summary>
 /// Represents a post created by an account, which can include content, pictures, comments, and likes.

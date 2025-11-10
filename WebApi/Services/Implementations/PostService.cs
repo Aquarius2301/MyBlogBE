@@ -1,103 +1,118 @@
-using System;
 using BusinessObject.Models;
-using DataAccess.UnitOfWork;
+using DataAccess;
 using Microsoft.EntityFrameworkCore;
 using WebApi.Dtos;
-using WebApi.Services.Interfaces;
 
 namespace WebApi.Services.Implementations;
 
 public class PostService : IPostService
 {
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IBaseRepository _repository;
 
-    public PostService(IUnitOfWork unitOfWork)
+    public PostService(IBaseRepository repository)
     {
-        _unitOfWork = unitOfWork;
+        _repository = repository;
     }
 
-    public async Task<List<GetPostsResponse>> GetPostsListAsync(DateTime? cursor, Guid userId, int pageSize)
+    public async Task<Post?> GetByIdAsync(Guid commentId)
     {
-        var query =
-            _unitOfWork.Posts.GetQuery()
-                .Where(x => x.DeletedAt == null &&
-                            (cursor == null ? x.CreatedAt < DateTime.UtcNow
-                                            : x.CreatedAt < cursor))
-                .Select(x => new GetPostsResponse
-                {
-                    Id = x.Id,
-                    Link = x.Link,
-                    Content = x.Content,
-                    AccountId = x.AccountId,
-                    AccountName = x.Account.DisplayName,
-                    CreatedAt = x.CreatedAt,
-                    PostPictures = x.Pictures.Select(pp => pp.Link).ToList(),
-                    LatestComment =
-                        x.Comments.Where(x => x.ParentCommentId == null)
-                            .OrderByDescending(c => c.CreatedAt)
-                            .Select(c => new PostLatestComment
-                            {
-                                Username = c.Account.Username,
-                                DisplayName = c.Account.DisplayName,
-                                Content = c.Content,
-                                CreatedAt = c.CreatedAt
-                            })
-                            .FirstOrDefault(),
-                    LikeCount = x.PostLikes.Count(),
-                    CommentCount = x.Comments.Count(),
-                    IsFollowing = x.Account.Followers.Any(
-                        f => f.AccountId == userId &&
-                             f.FollowingId == x.AccountId),
-                    IsLiked = x.PostLikes.Any(pl => pl.PostId == x.Id && pl.AccountId == userId),
-                })
-                .OrderByDescending(x => x.CreatedAt)
-                .Take(pageSize);
+        return await _repository.Posts.GetByIdAsync(commentId);
+    }
+
+    public async Task<List<GetPostsResponse>> GetPostsListAsync(
+        DateTime? cursor,
+        Guid accountId,
+        int pageSize
+    )
+    {
+        var query = _repository
+            .Posts.GetQuery()
+            .Where(x =>
+                x.DeletedAt == null
+                && (cursor == null ? x.CreatedAt < DateTime.UtcNow : x.CreatedAt < cursor)
+            )
+            .Select(x => new GetPostsResponse
+            {
+                Id = x.Id,
+                Link = x.Link,
+                Content = x.Content,
+                AccountId = x.AccountId,
+                AccountName = x.Account.DisplayName,
+                CreatedAt = x.CreatedAt,
+                PostPictures = x.Pictures.Select(pp => pp.Link).ToList(),
+                LatestComment = x
+                    .Comments.Where(x => x.ParentCommentId == null)
+                    .OrderByDescending(c => c.CreatedAt)
+                    .Select(c => new PostLatestComment
+                    {
+                        Username = c.Account.Username,
+                        DisplayName = c.Account.DisplayName,
+                        Content = c.Content,
+                        CreatedAt = c.CreatedAt,
+                    })
+                    .FirstOrDefault(),
+                LikeCount = x.PostLikes.Count(),
+                CommentCount = x.Comments.Count(),
+                IsFollowing = x.Account.Followers.Any(f =>
+                    f.AccountId == accountId && f.FollowingId == x.AccountId
+                ),
+                IsLiked = x.PostLikes.Any(pl => pl.PostId == x.Id && pl.AccountId == accountId),
+            })
+            .OrderByDescending(x => x.CreatedAt)
+            .Take(pageSize);
 
         var posts = await query.ToListAsync();
 
         return posts.OrderByDescending(x => x.Score).ToList();
     }
 
-    public async Task<List<GetMyPostsResponse>> GetMyPostsListAsync(DateTime? cursor, Guid userId, int pageSize)
+    public async Task<List<GetMyPostsResponse>> GetMyPostsListAsync(
+        DateTime? cursor,
+        Guid accountId,
+        int pageSize
+    )
     {
-        var query =
-            _unitOfWork.Posts.GetQuery()
-                .Where(x => x.DeletedAt == null && x.AccountId == userId &&
-                            (cursor == null ? x.CreatedAt < DateTime.UtcNow
-                                            : x.CreatedAt < cursor))
-                .Select(x => new GetMyPostsResponse
-                {
-                    Id = x.Id,
-                    Link = x.Link,
-                    Content = x.Content,
-                    AccountId = x.AccountId,
-                    AccountName = x.Account.DisplayName,
-                    CreatedAt = x.CreatedAt,
-                    PostPicture = x.Pictures.Select(pp => pp.Link).ToList(),
-                    LatestComment =
-                        x.Comments.Where(x => x.ParentCommentId == null)
-                            .OrderByDescending(c => c.CreatedAt)
-                            .Select(c => new PostLatestComment
-                            {
-                                Username = c.Account.Username,
-                                DisplayName = c.Account.DisplayName,
-                                Content = c.Content,
-                                CreatedAt = c.CreatedAt
-                            })
-                            .FirstOrDefault(),
-                    LikeCount = x.PostLikes.Count(),
-                    CommentCount = x.Comments.Count(),
-                    IsLiked = x.PostLikes.Any(pl => pl.PostId == x.Id && pl.AccountId == userId),
-                })
-                .OrderByDescending(x => x.CreatedAt)
-                .Take(pageSize);
+        var query = _repository
+            .Posts.GetQuery()
+            .Where(x =>
+                x.DeletedAt == null
+                && x.AccountId == accountId
+                && (cursor == null ? x.CreatedAt < DateTime.UtcNow : x.CreatedAt < cursor)
+            )
+            .Select(x => new GetMyPostsResponse
+            {
+                Id = x.Id,
+                Link = x.Link,
+                Content = x.Content,
+                AccountId = x.AccountId,
+                AccountName = x.Account.DisplayName,
+                CreatedAt = x.CreatedAt,
+                PostPicture = x.Pictures.Select(pp => pp.Link).ToList(),
+                LatestComment = x
+                    .Comments.Where(x => x.ParentCommentId == null)
+                    .OrderByDescending(c => c.CreatedAt)
+                    .Select(c => new PostLatestComment
+                    {
+                        Username = c.Account.Username,
+                        DisplayName = c.Account.DisplayName,
+                        Content = c.Content,
+                        CreatedAt = c.CreatedAt,
+                    })
+                    .FirstOrDefault(),
+                LikeCount = x.PostLikes.Count(),
+                CommentCount = x.Comments.Count(),
+                IsLiked = x.PostLikes.Any(pl => pl.PostId == x.Id && pl.AccountId == accountId),
+            })
+            .OrderByDescending(x => x.CreatedAt)
+            .Take(pageSize);
 
         return await query.ToListAsync();
     }
 
-    public async Task<GetPostDetailResponse?> GetPostByLinkAsync(string link, Guid userId)
+    public async Task<GetPostDetailResponse?> GetPostByLinkAsync(string link, Guid accountId)
     {
-        var post = await _unitOfWork.Posts.GetQuery()
+        var post = await _repository
+            .Posts.GetQuery()
             .Where(x => x.Link == link && x.DeletedAt == null)
             .Select(x => new GetPostDetailResponse
             {
@@ -110,51 +125,73 @@ public class PostService : IPostService
                 PostPicture = x.Pictures.Select(pp => pp.Link).ToList(),
                 LikeCount = x.PostLikes.Count(),
                 CommentCount = x.Comments.Count(),
-                IsLiked = x.PostLikes.Any(pl => pl.PostId == x.Id && pl.AccountId == userId),
+                IsLiked = x.PostLikes.Any(pl => pl.PostId == x.Id && pl.AccountId == accountId),
             })
             .FirstOrDefaultAsync();
 
         return post;
     }
 
-    public async Task<bool> LikePostAsync(Guid postId, Guid userId)
+    public async Task LikePostAsync(Guid postId, Guid accountId)
     {
-        var existingPost = await _unitOfWork.Posts.GetByIdAsync(postId);
-        if (existingPost != null && existingPost.DeletedAt == null)
-        {
-            var existingLike = await _unitOfWork.PostLikes.GetPostLikeByPostAndAccountAsync(userId, postId);
+        var existingLike = await _repository.PostLikes.GetByAccountAndPostAsync(accountId, postId);
 
-            if (existingLike == null)
-            {
-                await _unitOfWork.PostLikes.AddAsync(new PostLike
+        if (existingLike == null)
+        {
+            _repository.PostLikes.Add(
+                new PostLike
                 {
                     PostId = postId,
-                    AccountId = userId,
-                    CreatedAt = DateTime.UtcNow
-                });
-
-                return true;
-            }
+                    AccountId = accountId,
+                    CreatedAt = DateTime.UtcNow,
+                }
+            );
+            await _repository.SaveChangesAsync();
         }
-
-        return false;
     }
 
-    public async Task<bool> CancelLikePostAsync(Guid postId, Guid userId)
+    public async Task CancelLikePostAsync(Guid postId, Guid accountId)
     {
-        var existingPost = await _unitOfWork.Posts.GetByIdAsync(postId);
-        if (existingPost != null && existingPost.DeletedAt == null)
+        var existingLike = await _repository.PostLikes.GetByAccountAndPostAsync(accountId, postId);
+
+        if (existingLike != null)
         {
-            var existingLike = await _unitOfWork.PostLikes.GetPostLikeByPostAndAccountAsync(userId, postId);
-
-            if (existingLike != null)
-            {
-                await _unitOfWork.PostLikes.DeleteAsync(existingLike);
-
-                return true;
-            }
+            _repository.PostLikes.Remove(existingLike);
+            await _repository.SaveChangesAsync();
         }
+    }
 
-        return false;
+    public async Task<List<GetCommentsResponse>> GetPostCommentsList(
+        Guid postId,
+        DateTime? cursor,
+        Guid accountId,
+        int pageSize
+    )
+    {
+        var comments = await _repository
+            .Comments.GetQuery()
+            .Where(c =>
+                c.PostId == postId
+                && c.ParentCommentId == null
+                && (cursor == null || c.CreatedAt < cursor)
+                && c.DeletedAt == null
+            )
+            .Select(c => new GetCommentsResponse
+            {
+                Id = c.Id,
+                Content = c.Content,
+                AccountId = c.AccountId,
+                AccountName = c.Account.DisplayName,
+                CreatedAt = c.CreatedAt,
+                CommentPictures = c.Pictures.Select(cp => cp.Link).ToList(),
+                LikeCount = c.CommentLikes.Count(),
+                CommentCount = c.Replies.Count(),
+                IsLiked = c.CommentLikes.Any(cl => cl.AccountId == accountId),
+            })
+            .OrderByDescending(c => c.CreatedAt)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return comments.OrderByDescending(c => c.Score).ToList();
     }
 }

@@ -1,21 +1,29 @@
-using System;
 using BusinessObject;
 using BusinessObject.Models;
-using DataAccess.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace DataAccess.Repositories.Implementations;
 
 public class PostRepository : Repository<Post>, IPostRepository
 {
-    public PostRepository(MyBlogContext context) : base(context)
+    public PostRepository(MyBlogContext context)
+        : base(context) { }
+
+    public new async Task<ICollection<Post>> GetAllAsync(bool includeDeleted = false)
     {
+        var posts = await _context
+            .Posts.Where(p => includeDeleted || p.DeletedAt == null)
+            .ToListAsync();
+
+        return posts;
     }
 
-    public async Task<List<Post>> GetPostsByNameAsync(string name)
+    public new async Task<Post?> GetByIdAsync(Guid id, bool includeDeleted = false)
     {
-        return await _context.Posts
-            .Where(p => p.Content.Contains(name) && p.DeletedAt == null)
-            .ToListAsync();
+        var post = await _context.Posts.FirstOrDefaultAsync(p =>
+            p.Id == id && (includeDeleted || p.DeletedAt == null)
+        );
+
+        return post;
     }
 }

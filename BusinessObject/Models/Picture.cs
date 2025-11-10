@@ -1,5 +1,3 @@
-using System;
-
 namespace BusinessObject.Models;
 
 public class Picture

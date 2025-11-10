@@ -3,9 +3,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BusinessObject.Models;
 
-using Microsoft.EntityFrameworkCore;
-
-
 [Index(nameof(CommentId), nameof(AccountId), IsUnique = true)]
 /// <summary>
 /// Represents a like on a comment by a user. Each account can like a comment only once.

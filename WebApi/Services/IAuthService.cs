@@ -1,8 +1,31 @@
+using BusinessObject.Models;
+using WebApi.Dtos;
 
-using WebAPI.Dtos;
+namespace WebApi.Services;
 
+/// <summary>
+/// Authentication Service Interface
+/// </summary>
 public interface IAuthService
 {
+    /// <summary>
+    /// Gets an account by its username.
+    /// </summary>
+    /// <param name="username">The username of the account.</param>
+    /// <returns>
+    /// An <see cref="Account"/> with the specified username if found; otherwise, null.
+    /// </returns>
+    Task<Account?> GetByUsernameAsync(string username);
+
+    /// <summary>
+    /// Gets an account by its email.
+    /// </summary>
+    /// <param name="email">The email of the account.</param>
+    /// <returns>
+    /// An <see cref="Account"/> with the specified email if found; otherwise, null.
+    /// </returns>
+    Task<Account?> GetByEmailAsync(string email);
+
     /// <summary>
     /// Authenticates a user with the given username and password.
     /// </summary>
@@ -11,9 +34,6 @@ public interface IAuthService
     /// <returns>
     /// <para>An <see cref="AuthResponse"/> object if authentication is successful; otherwise, null.</para>
     /// </returns>
-    /// <remarks>
-    /// This method validates the credentials and generates access and refresh tokens.
-    /// </remarks>
     Task<AuthResponse?> GetAuthenticateAsync(string username, string password);
 
     /// <summary>
@@ -38,15 +58,7 @@ public interface IAuthService
     /// Registers a new user account.
     /// </summary>
     /// <param name="request">The registration request containing username, password, email, and display name.</param>
-    /// <returns>
-    /// <para>A tuple:</para>
-    /// <para>- Item1: True if registration succeeded, false otherwise.</para>
-    /// <para>- Item2: Error type string ("user", "email") if registration failed, otherwise null.</para>
-    /// </returns>
-    /// <remarks>
-    /// This method creates a new account and sends a confirmation email to the user.
-    /// </remarks>
-    Task<(bool, string?)> RegisterAccountAsync(RegisterRequest request);
+    Task RegisterAccountAsync(RegisterRequest request);
 
     /// <summary>
     /// Confirms a newly registered account using the provided confirmation code.
@@ -84,5 +96,4 @@ public interface IAuthService
     /// <para>True if the password was reset successfully; otherwise, false.</para>
     /// </returns>
     Task<bool> ResetPasswordAsync(string confirmCode, string newPassowrd);
-
 }

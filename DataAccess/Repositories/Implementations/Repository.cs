@@ -1,38 +1,30 @@
-using System;
 using BusinessObject;
-using DataAccess.Repositories.Interfaces;
-using Microsoft.EntityFrameworkCore;
 
 namespace DataAccess.Repositories.Implementations;
 
-public class Repository<T> : IRepository<T> where T : class
+public class Repository<T> : IRepository<T>
+    where T : class
 {
     protected readonly MyBlogContext _context;
+
     public Repository(MyBlogContext context)
     {
         _context = context;
     }
 
-    public async Task AddAsync(T entity)
+    public void Add(T entity)
     {
-        await _context.Set<T>().AddAsync(entity);
-        await _context.SaveChangesAsync();
+        _context.Set<T>().Add(entity);
     }
 
-    public Task DeleteAsync(T entity)
+    public async Task<ICollection<T>> GetAllAsync(bool includeDeleted = false)
     {
-        _context.Set<T>().Remove(entity);
-        return _context.SaveChangesAsync();
+        throw new NotImplementedException();
     }
 
-    public Task<List<T>> GetAllAsync()
+    public async Task<T?> GetByIdAsync(Guid id, bool includeDeleted = false)
     {
-        return _context.Set<T>().ToListAsync();
-    }
-
-    public async Task<T?> GetByIdAsync(Guid id)
-    {
-        return await _context.Set<T>().FindAsync(id);
+        throw new NotImplementedException();
     }
 
     public IQueryable<T> GetQuery()
@@ -40,9 +32,13 @@ public class Repository<T> : IRepository<T> where T : class
         return _context.Set<T>().AsQueryable();
     }
 
-    public Task UpdateAsync(T entity)
+    public void Remove(T entity)
     {
-        _context.Set<T>().Update(entity);
-        return _context.SaveChangesAsync();
+        _context.Set<T>().Remove(entity);
+    }
+
+    public void RemoveRange(IEnumerable<T> entities)
+    {
+        _context.Set<T>().RemoveRange(entities);
     }
 }

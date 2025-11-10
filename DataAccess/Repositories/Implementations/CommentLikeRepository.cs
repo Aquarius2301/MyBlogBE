@@ -1,20 +1,20 @@
-using System;
 using BusinessObject;
 using BusinessObject.Models;
-using DataAccess.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace DataAccess.Repositories.Implementations;
 
 public class CommentLikeRepository : Repository<CommentLike>, ICommentLikeRepository
 {
-    public CommentLikeRepository(MyBlogContext context) : base(context)
-    {
-    }
+    public CommentLikeRepository(MyBlogContext context)
+        : base(context) { }
 
-    public async Task<CommentLike?> GetCommentLikeByPostAndAccountAsync(Guid accountId, Guid commentId)
+    public async Task<CommentLike?> GetByAccountAndCommentAsync(Guid accountId, Guid commentId)
     {
-        return await _context.CommentLikes
-                     .FirstOrDefaultAsync(pl => pl.CommentId == commentId && pl.AccountId == accountId);
+        var commentLike = await _context.CommentLikes.FirstOrDefaultAsync(cl =>
+            cl.AccountId == accountId && cl.CommentId == commentId
+        );
+
+        return commentLike;
     }
 }

@@ -1,125 +1,99 @@
-using System;
 using BusinessObject.Models;
-using DataAccess.UnitOfWork;
+using DataAccess;
 using Microsoft.EntityFrameworkCore;
 using WebApi.Dtos;
-using WebApi.Services.Interfaces;
 
 namespace WebApi.Services.Implementations;
 
 public class CommentService : ICommentService
 {
-    private IUnitOfWork _unitOfWork;
+    private readonly IBaseRepository _repository;
 
-    public CommentService(IUnitOfWork unitOfWork)
+    public CommentService(IBaseRepository repository)
     {
-        _unitOfWork = unitOfWork;
+        _repository = repository;
     }
 
-    public async Task<List<GetCommentsResponse>?> GetCommentList(Guid postId, DateTime? cursor, Guid userId, int pageSize)
+    public async Task<Comment?> GetByIdAsync(Guid commentId)
     {
-        var post = await _unitOfWork.Posts.GetByIdAsync(postId);
-
-        if (post != null && post.DeletedAt == null)
-        {
-            var comments =
-             await _unitOfWork.Comments.GetQuery()
-                 .Where(c => c.PostId == postId && c.ParentCommentId == null && (cursor == null || c.CreatedAt < cursor) &&
-                             c.DeletedAt == null)
-                 .Select(c => new GetCommentsResponse
-                 {
-                     Id = c.Id,
-                     Content = c.Content,
-                     AccountId = c.AccountId,
-                     AccountName = c.Account.DisplayName,
-                     CreatedAt = c.CreatedAt,
-                     CommentPictures = c.Pictures.Select(cp => cp.Link).ToList(),
-                     LikeCount = c.CommentLikes.Count(),
-                     CommentCount = c.Replies.Count(),
-                     IsLiked = c.CommentLikes.Any(cl => cl.AccountId == userId)
-                 })
-                 .OrderByDescending(c => c.CreatedAt)
-                 .Take(pageSize)
-                 .ToListAsync();
-
-            return comments.OrderByDescending(c => c.Score).ToList();
-        }
-
-        return null;
+        return await _repository.Comments.GetByIdAsync(commentId);
     }
 
-    public async Task<List<GetChildCommentsResponse>?> GetChildCommentList(Guid commentId, DateTime? cursor, Guid userId, int pageSize)
+    public async Task<List<GetChildCommentsResponse>> GetChildCommentList(
+        Guid commentId,
+        DateTime? cursor,
+        Guid accountId,
+        int pageSize
+    )
     {
-        var comment = await _unitOfWork.Comments.GetByIdAsync(commentId);
-
-        if (comment != null && comment.DeletedAt == null)
-        {
-            var comments =
-                await _unitOfWork.Comments.GetQuery()
-                    .Where(c => c.ParentCommentId == commentId && (cursor == null || c.CreatedAt < cursor) &&
-                                c.DeletedAt == null)
-                    .Select(c => new GetChildCommentsResponse
-                    {
-                        Id = c.Id,
-                        Content = c.Content,
-                        AccountId = c.AccountId,
-                        AccountName = c.Account.DisplayName,
-                        ReplyAccountName = c.ReplyAccount != null
-                                               ? c.ReplyAccount.DisplayName
-                                               : string.Empty,
-                        CreatedAt = c.CreatedAt,
-                        CommentPictures = c.Pictures.Select(cp => cp.Link).ToList(),
-                        LikeCount = c.CommentLikes.Count(),
-                        CommentCount = c.Replies.Count(),
-                        IsLiked = c.CommentLikes.Any(cl => cl.AccountId == userId)
-                    })
-                    .OrderByDescending(c => c.CreatedAt)
-                    .Take(pageSize)
-                    .ToListAsync();
-
-            return comments.ToList();
-        }
-
-        return null;
-    }
-
-    public async Task<bool> LikeCommentAsync(Guid commentId, Guid userId)
-    {
-        var existingComment = await _unitOfWork.Comments.GetByIdAsync(commentId);
-
-        if (existingComment != null && existingComment.DeletedAt == null)
-        {
-            var existingLike = await _unitOfWork.CommentLikes.GetCommentLikeByPostAndAccountAsync(userId, commentId);
-
-            if (existingLike == null)
+        var comments = await _repository
+            .Comments.GetQuery()
+            .Where(c =>
+                c.ParentCommentId == commentId
+                && (cursor == null || c.CreatedAt < cursor)
+                && c.DeletedAt == null
+            )
+            .Select(c => new GetChildCommentsResponse
             {
-                await _unitOfWork.CommentLikes.AddAsync(new CommentLike
+                Id = c.Id,
+                Content = c.Content,
+                AccountId = c.AccountId,
+                AccountName = c.Account.DisplayName,
+                ReplyAccountName =
+                    c.ReplyAccount != null ? c.ReplyAccount.DisplayName : string.Empty,
+                CreatedAt = c.CreatedAt,
+                CommentPictures = c.Pictures.Select(cp => cp.Link).ToList(),
+                LikeCount = c.CommentLikes.Count(),
+                CommentCount = c.Replies.Count(),
+                IsLiked = c.CommentLikes.Any(cl => cl.AccountId == accountId),
+            })
+            .OrderByDescending(c => c.CreatedAt)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return comments.ToList();
+    }
+
+    public async Task<bool> LikeCommentAsync(Guid commentId, Guid accountId)
+    {
+        var existingLike = await _repository.CommentLikes.GetByAccountAndCommentAsync(
+            accountId,
+            commentId
+        );
+
+        if (existingLike == null)
+        {
+            _repository.CommentLikes.Add(
+                new CommentLike
                 {
                     CommentId = commentId,
-                    AccountId = userId,
-                    CreatedAt = DateTime.UtcNow
-                });
-
-                return true;
-            }
+                    AccountId = accountId,
+                    CreatedAt = DateTime.UtcNow,
+                }
+            );
+            await _repository.SaveChangesAsync();
         }
 
-        return false;
+        return true;
     }
 
-    public async Task<bool> CancelLikeCommentAsync(Guid commentId, Guid userId)
+    public async Task<bool> CancelLikeCommentAsync(Guid commentId, Guid accountId)
     {
-        var existingComment = await _unitOfWork.Comments.GetByIdAsync(commentId);
+        var existingComment = await _repository.Comments.GetByIdAsync(commentId);
         if (existingComment != null && existingComment.DeletedAt == null)
         {
-            var existingLike = await _unitOfWork.CommentLikes.GetCommentLikeByPostAndAccountAsync(userId, commentId);
+            var existingLike = await _repository.CommentLikes.GetByAccountAndCommentAsync(
+                accountId,
+                commentId
+            );
 
             if (existingLike != null)
             {
-                await _unitOfWork.CommentLikes.DeleteAsync(existingLike);
-
-                return true;
+                _repository.CommentLikes.Remove(existingLike);
+                await _repository.SaveChangesAsync();
             }
+
+            return true;
         }
 
         return false;
