@@ -1,17 +1,22 @@
 using BusinessObject.Models;
 using DataAccess;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using WebApi.Dtos;
+using WebApi.Helpers;
+using WebApi.Settings;
 
 namespace WebApi.Services.Implementations;
 
 public class PostService : IPostService
 {
     private readonly IBaseRepository _repository;
+    private readonly BaseSettings _settings;
 
-    public PostService(IBaseRepository repository)
+    public PostService(IBaseRepository repository, IOptions<BaseSettings> options)
     {
         _repository = repository;
+        _settings = options.Value;
     }
 
     public async Task<Post?> GetByIdAsync(Guid commentId)
@@ -193,5 +198,34 @@ public class PostService : IPostService
             .ToListAsync();
 
         return comments.OrderByDescending(c => c.Score).ToList();
+    }
+
+    public async Task<CreatePostResponse> AddPostAsync(CreatePostRequest request, Guid accountId)
+    {
+        string link;
+
+        do
+        {
+            link = StringHelper.GenerateRandomString(_settings.TokenLength);
+        } while (await _repository.Posts.GetByLinkAsync(link) != null);
+
+        var newPost = new Post
+        {
+            Id = Guid.NewGuid(),
+            Link = link,
+            Content = request.Content,
+            AccountId = accountId,
+            CreatedAt = DateTime.UtcNow,
+        };
+
+        _repository.Posts.Add(newPost);
+        await _repository.SaveChangesAsync();
+
+        return new CreatePostResponse
+        {
+            Id = newPost.Id,
+            Link = newPost.Link,
+            Content = newPost.Content,
+        };
     }
 }

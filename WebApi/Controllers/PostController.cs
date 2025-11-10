@@ -237,4 +237,41 @@ public class PostController : ControllerBase
             return ApiResponse.Error(ex.Message);
         }
     }
+
+    /// <summary>
+    /// Creates a new post for the authenticated user.
+    /// </summary>
+    /// <param name="request">The post creation request containing content.</param>
+    /// <returns>
+    /// 201 - Returns the created post details upon successful creation.
+    /// 400 - Returns error if the post content is empty.
+    /// 403 - Returns error if the user's account status does not allow posting.
+    /// 500 - Returns error message if exception occurs.
+    /// </returns>
+    [HttpPost("")]
+    public async Task<IActionResult> AddPost([FromBody] CreatePostRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.Content))
+            {
+                return ApiResponse.BadRequest(_lang.Get("PostEmpty"));
+            }
+
+            var user = _jwtHelper.GetAccountInfo();
+
+            if (user.StatusType != BusinessObject.Enums.StatusType.Active)
+            {
+                return ApiResponse.Forbidden(_lang.Get("InactiveAccountCannotCreatePost"));
+            }
+
+            var res = await _service.AddPostAsync(request, user.Id);
+
+            return ApiResponse.Created(res, _lang.Get("PostCreated"));
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse.Error(ex.Message);
+        }
+    }
 }

@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using BusinessObject.Enums;
 using BusinessObject.Models;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -58,6 +59,7 @@ public class JwtHelper
         {
             new Claim(JwtRegisteredClaimNames.Sub, account.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.UniqueName, account.Username),
+            new Claim("Status", account.Status.ToString()),
         };
 
         var token = new JwtSecurityToken(
@@ -95,11 +97,13 @@ public class JwtHelper
 
         var accountId = user?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var accountUsername = user?.FindFirst(ClaimTypes.Name)?.Value;
+        var status = user?.FindFirst("Status")?.Value;
 
         return new UserInfoResponse
         {
             Id = Guid.Parse(accountId ?? ""),
             Username = accountUsername ?? "",
+            StatusType = status != null ? Enum.Parse<StatusType>(status) : StatusType.InActive,
         };
     }
 }

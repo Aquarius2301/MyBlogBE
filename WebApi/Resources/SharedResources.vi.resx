@@ -189,6 +189,15 @@
     <data name="NoPost" xml:space="preserve">
         <value>Không tìm thấy bài đăng</value>
     </data>
+    <data name="PostCreated" xml:space="preserve">
+        <value>Đăng bài thành công</value>
+    </data>
+    <data name="InactiveAccountCannotCreatePost" xml:space="preserve">
+        <value>Tài khoản này không được phép đăng bài</value>
+    </data>
+    <data name="PostEmpty" xml:space="preserve">
+        <value>Bài đăng không được để trống</value>
+    </data>
     <data name="NoComment" xml:space="preserve">
         <value>Không tìm thấy bình luận</value>
     </data>

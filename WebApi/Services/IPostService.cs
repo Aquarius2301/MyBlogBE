@@ -87,4 +87,12 @@ public interface IPostService
         Guid accountId,
         int pageSize
     );
+
+    /// <summary>
+    /// Adds a new post.
+    /// </summary>
+    /// <param name="request">The post creation request containing post details.</param>
+    /// <param name="accountId">The ID of the account creating the post.</param>
+    /// <returns>A <see cref="CreatePostResponse" objects representing created post></returns>
+    Task<CreatePostResponse> AddPostAsync(CreatePostRequest request, Guid accountId);
 }

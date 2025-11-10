@@ -55,6 +55,19 @@ public class GetPostDetailResponse
     public int CommentCount { get; set; }
 }
 
+public class CreatePostRequest
+{
+    public string Content { get; set; } = null!;
+}
+
+public class CreatePostResponse
+{
+    public Guid Id { get; set; }
+    public string Link { get; set; } = null!;
+    public string Content { get; set; } = null!;
+}
+
+
 // public class PostComment
 // {
 //     public Guid Id { get; set; }

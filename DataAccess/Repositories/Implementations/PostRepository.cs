@@ -26,4 +26,11 @@ public class PostRepository : Repository<Post>, IPostRepository
 
         return post;
     }
+
+    public Task<Post?> GetByLinkAsync(string link, bool includeDeleted = false)
+    {
+        return _context.Posts.FirstOrDefaultAsync(p =>
+            p.Link == link && (includeDeleted || p.DeletedAt == null)
+        );
+    }
 }

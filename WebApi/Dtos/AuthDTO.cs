@@ -1,3 +1,5 @@
+using BusinessObject.Enums;
+
 namespace WebApi.Dtos;
 
 public class AuthRequest
@@ -21,6 +23,7 @@ public class UserInfoResponse
 {
     public Guid Id { get; set; }
     public string Username { get; set; } = null!;
+    public StatusType StatusType { get; set; }
 }
 
 public class RegisterRequest
