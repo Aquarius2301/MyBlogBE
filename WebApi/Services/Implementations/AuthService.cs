@@ -44,6 +44,7 @@ public class AuthService : IAuthService
 
         if (
             account == null
+            || account.Status == StatusType.InActive
             || !PasswordHasherHelper.VerifyPassword(password, account.HashedPassword)
         )
         {

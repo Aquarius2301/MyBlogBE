@@ -5,14 +5,18 @@ namespace WebApi.Dtos;
 public class PaginationRequest
 {
     public DateTime? Cursor { get; set; }
-    public int PageSize { get; set; }
 
-    public void ApplyDefaults(BaseSettings settings)
+    private int _pageSize;
+    public int PageSize
     {
-        if (PageSize <= 0)
-            PageSize = settings.PageSize;
-        else if (PageSize > settings.MaxPageSize)
-            PageSize = settings.MaxPageSize;
+        get { return _pageSize; }
+        set
+        {
+            if (value <= 0 || value > 50)
+                _pageSize = 10;
+            else
+                _pageSize = value;
+        }
     }
 }
 

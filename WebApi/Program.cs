@@ -123,6 +123,7 @@ builder.Services.AddScoped<IBaseRepository, BaseRepository>();
 
 // Services
 builder.Services.AddScoped<ILanguageService, LanguageService>();
+builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<IPostService, PostService>();

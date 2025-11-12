@@ -50,8 +50,6 @@ public class CommentController : ControllerBase
     {
         try
         {
-            request.ApplyDefaults(_settings);
-
             var user = _jwtHelper.GetAccountInfo();
             var res = await _service.GetChildCommentList(
                 id,

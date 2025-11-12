@@ -47,8 +47,6 @@ public class PostController : ControllerBase
     {
         try
         {
-            request.ApplyDefaults(_settings);
-
             var user = _jwtHelper.GetAccountInfo();
 
             var res = await _service.GetPostsListAsync(request.Cursor, user.Id, request.PageSize);
@@ -81,8 +79,6 @@ public class PostController : ControllerBase
     {
         try
         {
-            request.ApplyDefaults(_settings);
-
             var user = _jwtHelper.GetAccountInfo();
 
             var res = await _service.GetMyPostsListAsync(request.Cursor, user.Id, request.PageSize);
@@ -212,8 +208,6 @@ public class PostController : ControllerBase
             {
                 return ApiResponse.NotFound(_lang.Get("NoPost"));
             }
-
-            request.ApplyDefaults(_settings);
 
             var user = _jwtHelper.GetAccountInfo();
             var res = await _service.GetPostCommentsList(
