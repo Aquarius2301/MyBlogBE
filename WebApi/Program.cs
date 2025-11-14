@@ -2,9 +2,9 @@ using System.Globalization;
 using System.Text;
 using BusinessObject;
 using BusinessObject.Seeds;
-using DataAccess;
 using DataAccess.Repositories;
 using DataAccess.Repositories.Implementations;
+using DataAccess.UnitOfWork;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Localization;
@@ -117,9 +117,10 @@ builder.Services.AddScoped<CloudinaryHelper>();
 builder.Services.AddScoped<IAccountRepository, AccountRepository>();
 builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 builder.Services.AddScoped<ICommentLikeRepository, CommentLikeRepository>();
+builder.Services.AddScoped<IPictureRepository, PictureRepository>();
 builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddScoped<IPostLikeRepository, PostLikeRepository>();
-builder.Services.AddScoped<IBaseRepository, BaseRepository>();
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 // Services
 builder.Services.AddScoped<ILanguageService, LanguageService>();

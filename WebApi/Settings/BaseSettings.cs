@@ -26,6 +26,11 @@ public class BaseSettings
     public int TokenExpiryMinutes { get; set; }
 
     /// <summary>
+    /// Duration in days before a self-removal request is executed.
+    /// </summary>
+    public int SelfRemoveDurationDays { get; set; }
+
+    /// <summary>
     /// Configuration settings for Cloudinary integration.
     /// </summary>
     public CloudinarySettings CloudinarySettings { get; set; } = null!;

@@ -41,5 +41,9 @@ public class UpdatePasswordRequest
 {
     public string OldPassword { get; set; } = null!;
     public string NewPassword { get; set; } = null!;
-    public string NewPasswordConfimation { get; set; } = null!;
+}
+
+public class ChangeAvatarRequest
+{
+    public IFormFile AvatarFile { get; set; } = null!;
 }

@@ -49,7 +49,7 @@ public class CloudinaryHelper
         {
             return new ImageDto
             {
-                Key = uploadResult.PublicId,
+                PublicId = uploadResult.PublicId,
                 Link = uploadResult.SecureUrl.ToString(),
             };
         }

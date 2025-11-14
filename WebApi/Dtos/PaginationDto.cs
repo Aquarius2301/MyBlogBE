@@ -18,6 +18,11 @@ public class PaginationRequest
                 _pageSize = value;
         }
     }
+
+    public PaginationRequest()
+    {
+        _pageSize = 10;
+    }
 }
 
 public class PaginationResponse

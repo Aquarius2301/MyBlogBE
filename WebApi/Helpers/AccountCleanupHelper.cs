@@ -1,5 +1,5 @@
 using BusinessObject.Enums;
-using DataAccess;
+using DataAccess.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
 
 namespace WebApi.Helpers;
@@ -53,18 +53,18 @@ public class AccountCleanupHelper : BackgroundService
     private async Task CleanupExpiredAccountsAsync()
     {
         using var scope = _serviceProvider.CreateScope();
-        var repo = scope.ServiceProvider.GetRequiredService<IBaseRepository>();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
         var now = DateTime.UtcNow;
-        var expiredAccounts = await repo
+        var expiredAccounts = await unitOfWork
             .Accounts.GetQuery()
             .Where(a => a.Status == StatusType.InActive && a.EmailVerifiedCodeExpiry <= now)
             .ToListAsync();
 
         if (expiredAccounts.Any())
         {
-            repo.Accounts.RemoveRange(expiredAccounts);
-            await repo.SaveChangesAsync();
+            unitOfWork.Accounts.RemoveRange(expiredAccounts);
+            await unitOfWork.SaveChangesAsync();
 
             Console.WriteLine(
                 $"[Cleanup] Deleted {expiredAccounts.Count} expired unverified accounts at {now}."
@@ -84,10 +84,10 @@ public class AccountCleanupHelper : BackgroundService
     private async Task SelfRemoveAccountsAsync()
     {
         using var scope = _serviceProvider.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<IBaseRepository>();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
         var now = DateTime.UtcNow;
-        var expiredAccounts = await context
+        var expiredAccounts = await unitOfWork
             .Accounts.GetQuery()
             .Where(a => a.SelfRemoveTime <= now)
             .ToListAsync();
@@ -100,7 +100,7 @@ public class AccountCleanupHelper : BackgroundService
                 account.DeletedAt = now;
                 account.Status = StatusType.Suspended;
 
-                await context.SaveChangesAsync();
+                await unitOfWork.SaveChangesAsync();
             }
             Console.WriteLine(
                 $"[Cleanup] Soft-deleted {expiredAccounts.Count} accounts scheduled for self-removal at {now}."

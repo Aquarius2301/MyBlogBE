@@ -1,20 +1,22 @@
 using BusinessObject;
 using DataAccess.Repositories;
 
-namespace DataAccess;
+namespace DataAccess.UnitOfWork;
 
-public class BaseRepository : IBaseRepository
+public class UnitOfWork : IUnitOfWork
 {
     public IAccountRepository Accounts { get; }
+    public IPictureRepository Pictures { get; }
     public IPostRepository Posts { get; }
     public IPostLikeRepository PostLikes { get; }
     public ICommentRepository Comments { get; }
     public ICommentLikeRepository CommentLikes { get; }
     private readonly MyBlogContext _context;
 
-    public BaseRepository(
+    public UnitOfWork(
         MyBlogContext context,
         IAccountRepository accountRepository,
+        IPictureRepository pictureRepository,
         IPostRepository postRepository,
         IPostLikeRepository postLikeRepository,
         ICommentRepository commentRepository,
@@ -23,6 +25,7 @@ public class BaseRepository : IBaseRepository
     {
         _context = context;
         Accounts = accountRepository;
+        Pictures = pictureRepository;
         Posts = postRepository;
         PostLikes = postLikeRepository;
         Comments = commentRepository;

@@ -201,5 +201,16 @@
     <data name="NoComment" xml:space="preserve">
         <value>Không tìm thấy bình luận</value>
     </data>
-
+    <data name="NewPasswordMustBeDifferent" xml:space="preserve">
+        <value>Mật khẩu mới phải khác với mật khẩu cũ</value>
+    </data>
+    <data name="OldPasswordIncorrect" xml:space="preserve">
+        <value>Mật khẩu cũ không đúng</value>
+    </data>
+    <data name="SelfRemoveAccount1" xml:space="preserve">
+        <value>Tài khoản được lên lịch xóa sau</value>
+    </data>
+    <data name="SelfRemoveAccount2" xml:space="preserve">
+        <value> ngày</value>
+    </data>
 </root>

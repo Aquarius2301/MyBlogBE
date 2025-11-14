@@ -1,6 +1,6 @@
 using BusinessObject.Enums;
 using BusinessObject.Models;
-using DataAccess;
+using DataAccess.UnitOfWork;
 using Microsoft.Extensions.Options;
 using WebApi.Dtos;
 using WebApi.Helpers;
@@ -10,19 +10,19 @@ namespace WebApi.Services.Implementations;
 
 public class AuthService : IAuthService
 {
-    private IBaseRepository _repository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly JwtHelper _jwtHelper;
     private readonly EmailHelper _emailHelper;
     private readonly BaseSettings _settings;
 
     public AuthService(
-        IBaseRepository repository,
+        IUnitOfWork unitOfWork,
         JwtHelper jwtHelper,
         EmailHelper emailHelper,
         IOptions<BaseSettings> options
     )
     {
-        _repository = repository;
+        _unitOfWork = unitOfWork;
         _jwtHelper = jwtHelper;
         _emailHelper = emailHelper;
         _settings = options.Value;
@@ -30,17 +30,17 @@ public class AuthService : IAuthService
 
     public Task<Account?> GetByUsernameAsync(string username)
     {
-        return _repository.Accounts.GetByUsernameAsync(username);
+        return _unitOfWork.Accounts.GetByUsernameAsync(username);
     }
 
     public Task<Account?> GetByEmailAsync(string email)
     {
-        return _repository.Accounts.GetByEmailAsync(email);
+        return _unitOfWork.Accounts.GetByEmailAsync(email);
     }
 
     public async Task<AuthResponse?> GetAuthenticateAsync(string username, string password)
     {
-        var account = await _repository.Accounts.GetByUsernameAsync(username);
+        var account = await _unitOfWork.Accounts.GetByUsernameAsync(username);
 
         if (
             account == null
@@ -56,8 +56,9 @@ public class AuthService : IAuthService
         account.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(
             _settings.JwtSettings.RefreshTokenDurationDays
         );
+        account.SelfRemoveTime = null; // cancel self-removal if user logs in again
 
-        await _repository.SaveChangesAsync();
+        await _unitOfWork.SaveChangesAsync();
 
         return new AuthResponse
         {
@@ -68,7 +69,7 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponse?> GetRefreshTokenAsync(string refreshToken)
     {
-        var account = await _repository.Accounts.GetByRefreshTokenAsync(refreshToken);
+        var account = await _unitOfWork.Accounts.GetByRefreshTokenAsync(refreshToken);
 
         if (account != null && account.RefreshToken == refreshToken)
         {
@@ -77,7 +78,7 @@ public class AuthService : IAuthService
                 account.AccessToken = _jwtHelper.GenerateAccessToken(account);
                 account.RefreshToken = _jwtHelper.GenerateRefreshToken();
 
-                await _repository.SaveChangesAsync();
+                await _unitOfWork.SaveChangesAsync();
 
                 return new AuthResponse
                 {
@@ -91,7 +92,7 @@ public class AuthService : IAuthService
                 account.RefreshToken = null;
                 account.RefreshTokenExpiryTime = null;
 
-                await _repository.SaveChangesAsync();
+                await _unitOfWork.SaveChangesAsync();
 
                 return null;
             }
@@ -102,7 +103,7 @@ public class AuthService : IAuthService
 
     public async Task<bool> RemoveRefresh(Guid accountId)
     {
-        var account = await _repository.Accounts.GetByIdAsync(accountId);
+        var account = await _unitOfWork.Accounts.GetByIdAsync(accountId);
 
         if (account != null)
         {
@@ -110,7 +111,7 @@ public class AuthService : IAuthService
             account.RefreshToken = null;
             account.RefreshTokenExpiryTime = null;
 
-            await _repository.SaveChangesAsync();
+            await _unitOfWork.SaveChangesAsync();
 
             return true;
         }
@@ -142,13 +143,13 @@ public class AuthService : IAuthService
             CreatedAt = currentTime,
         };
 
-        _repository.Accounts.Add(newAccount);
-        await _repository.SaveChangesAsync();
+        _unitOfWork.Accounts.Add(newAccount);
+        await _unitOfWork.SaveChangesAsync();
     }
 
     public async Task<bool> ConfirmRegisterAccountAsync(string confirmCode)
     {
-        var account = await _repository.Accounts.GetByEmailVerifiedCode(
+        var account = await _unitOfWork.Accounts.GetByEmailVerifiedCode(
             confirmCode,
             VerificationType.Register
         );
@@ -160,7 +161,7 @@ public class AuthService : IAuthService
             account.EmailVerifiedCodeExpiry = null;
             account.Status = StatusType.Active;
 
-            await _repository.SaveChangesAsync();
+            await _unitOfWork.SaveChangesAsync();
             return true;
         }
 
@@ -169,7 +170,7 @@ public class AuthService : IAuthService
 
     public async Task<string?> ConfirmForgotPasswordAccountAsync(string confirmCode)
     {
-        var account = await _repository.Accounts.GetByEmailVerifiedCode(
+        var account = await _unitOfWork.Accounts.GetByEmailVerifiedCode(
             confirmCode,
             VerificationType.ForgotPassword
         );
@@ -179,7 +180,7 @@ public class AuthService : IAuthService
             account.VerificationType = VerificationType.ChangePassword;
             account.EmailVerifiedCodeExpiry = null;
 
-            await _repository.SaveChangesAsync();
+            await _unitOfWork.SaveChangesAsync();
             return confirmCode;
         }
 
@@ -189,7 +190,7 @@ public class AuthService : IAuthService
     public async Task<bool> ForgotPasswordAsync(string identifier)
     {
         var tokenTimeout = _settings.TokenExpiryMinutes;
-        var account = await _repository.Accounts.GetByUsernameOrEmailAsync(identifier);
+        var account = await _unitOfWork.Accounts.GetByUsernameOrEmailAsync(identifier);
 
         if (account != null)
         {
@@ -204,7 +205,7 @@ public class AuthService : IAuthService
             account.VerificationType = VerificationType.ForgotPassword;
             account.EmailVerifiedCodeExpiry = DateTime.UtcNow.AddMinutes(tokenTimeout);
 
-            await _repository.SaveChangesAsync();
+            await _unitOfWork.SaveChangesAsync();
             return true;
         }
 
@@ -213,7 +214,7 @@ public class AuthService : IAuthService
 
     public async Task<bool> ResetPasswordAsync(string confirmCode, string newPassowrd)
     {
-        var account = await _repository.Accounts.GetByEmailVerifiedCode(
+        var account = await _unitOfWork.Accounts.GetByEmailVerifiedCode(
             confirmCode,
             VerificationType.ChangePassword
         );
@@ -225,7 +226,7 @@ public class AuthService : IAuthService
             account.EmailVerifiedCode = null;
             account.HashedPassword = PasswordHasherHelper.HashPassword(newPassowrd);
 
-            await _repository.SaveChangesAsync();
+            await _unitOfWork.SaveChangesAsync();
 
             return true;
         }

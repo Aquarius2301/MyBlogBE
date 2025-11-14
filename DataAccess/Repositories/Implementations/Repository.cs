@@ -17,12 +17,12 @@ public class Repository<T> : IRepository<T>
         _context.Set<T>().Add(entity);
     }
 
-    public async Task<ICollection<T>> GetAllAsync(bool includeDeleted = false)
+    public Task<ICollection<T>> GetAllAsync(bool includeDeleted = false)
     {
         throw new NotImplementedException();
     }
 
-    public async Task<T?> GetByIdAsync(Guid id, bool includeDeleted = false)
+    public Task<T?> GetByIdAsync(Guid id, bool includeDeleted = false)
     {
         throw new NotImplementedException();
     }

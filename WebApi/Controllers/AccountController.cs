@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Org.BouncyCastle.Ocsp;
 using WebApi.Dtos;
 using WebApi.Helpers;
 using WebApi.Services;
@@ -14,16 +15,19 @@ namespace WebApi.Controllers;
 public class AccountController : ControllerBase
 {
     private readonly IAccountService _service;
+    private readonly ILanguageService _lang;
     private readonly JwtHelper _jwtHelper;
     private readonly BaseSettings _settings;
 
     public AccountController(
         IAccountService service,
+        ILanguageService lang,
         JwtHelper jwtHelper,
         IOptions<BaseSettings> options
     )
     {
         _service = service;
+        _lang = lang;
         _jwtHelper = jwtHelper;
         _settings = options.Value;
     }
@@ -100,23 +104,69 @@ public class AccountController : ControllerBase
     {
         var user = _jwtHelper.GetAccountInfo();
 
-        var isOldPasswordCorrect = await _service.IsPasswordCorrectAsync(
-            user.Id,
-            request.OldPassword
-        );
+        var errors = new Dictionary<string, string>();
 
-        if (!isOldPasswordCorrect)
+        if (
+            string.IsNullOrWhiteSpace(request.OldPassword)
+            || !await _service.IsPasswordCorrectAsync(user.Id, request.OldPassword)
+        )
         {
-            return ApiResponse.BadRequest("Old password is incorrect.");
+            errors["OldPassword"] = _lang.Get("OldPasswordIncorrect");
         }
 
-        if (request.NewPassword != request.NewPasswordConfimation)
+        if (ValidationHelper.IsStrongPassword(request.NewPassword) == false)
         {
-            return ApiResponse.BadRequest("New password and confirmation do not match.");
+            errors["NewPassword"] = _lang.Get("PasswordRegister");
         }
 
-        var result = await _service.ChangePasswordAsync(user.Id, request);
+        if (request.OldPassword == request.NewPassword)
+        {
+            errors["NewPassword"] = _lang.Get("NewPasswordMustBeDifferent");
+        }
 
-        return ApiResponse.Success("Password changed successfully.");
+        if (errors.Count > 0)
+        {
+            return ApiResponse.BadRequest(data: errors);
+        }
+
+        await _service.ChangePasswordAsync(user.Id, request);
+
+        return ApiResponse.Success(_lang.Get("PasswordChanged"));
+    }
+
+    [HttpPut("profile/me/change-avatar")]
+    public async Task<IActionResult> ChangeMyAvatar([FromForm] ChangeAvatarRequest request)
+    {
+        try
+        {
+            var user = _jwtHelper.GetAccountInfo();
+
+            var imageDto = await _service.ChangeAvatarAsync(user.Id, request.AvatarFile);
+
+            return ApiResponse.Success(imageDto);
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse.Error(ex.Message);
+        }
+    }
+
+    [HttpPut("profile/me/self-remove")]
+    public async Task<IActionResult> SelfRemoveMyAccount()
+    {
+        try
+        {
+            var user = _jwtHelper.GetAccountInfo();
+
+            await _service.SelfRemoveAccount(user.Id);
+
+            return ApiResponse.Success(
+                $"{_lang.Get("SelfRemoveAccount1")} {_settings.SelfRemoveDurationDays}{_lang.Get("SelfRemoveAccount2")}"
+            );
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse.Error(ex.Message);
+        }
     }
 }

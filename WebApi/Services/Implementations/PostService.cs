@@ -1,5 +1,5 @@
 using BusinessObject.Models;
-using DataAccess;
+using DataAccess.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using WebApi.Dtos;
@@ -10,18 +10,18 @@ namespace WebApi.Services.Implementations;
 
 public class PostService : IPostService
 {
-    private readonly IBaseRepository _repository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly BaseSettings _settings;
 
-    public PostService(IBaseRepository repository, IOptions<BaseSettings> options)
+    public PostService(IUnitOfWork unitOfWork, IOptions<BaseSettings> options)
     {
-        _repository = repository;
+        _unitOfWork = unitOfWork;
         _settings = options.Value;
     }
 
     public async Task<Post?> GetByIdAsync(Guid commentId)
     {
-        return await _repository.Posts.GetByIdAsync(commentId);
+        return await _unitOfWork.Posts.GetByIdAsync(commentId);
     }
 
     public async Task<List<GetPostsResponse>> GetPostsListAsync(
@@ -30,7 +30,7 @@ public class PostService : IPostService
         int pageSize
     )
     {
-        var query = _repository
+        var query = _unitOfWork
             .Posts.GetQuery()
             .Where(x =>
                 x.DeletedAt == null
@@ -77,7 +77,7 @@ public class PostService : IPostService
         int pageSize
     )
     {
-        var query = _repository
+        var query = _unitOfWork
             .Posts.GetQuery()
             .Where(x =>
                 x.DeletedAt == null
@@ -116,7 +116,7 @@ public class PostService : IPostService
 
     public async Task<GetPostDetailResponse?> GetPostByLinkAsync(string link, Guid accountId)
     {
-        var post = await _repository
+        var post = await _unitOfWork
             .Posts.GetQuery()
             .Where(x => x.Link == link && x.DeletedAt == null)
             .Select(x => new GetPostDetailResponse
@@ -139,11 +139,11 @@ public class PostService : IPostService
 
     public async Task LikePostAsync(Guid postId, Guid accountId)
     {
-        var existingLike = await _repository.PostLikes.GetByAccountAndPostAsync(accountId, postId);
+        var existingLike = await _unitOfWork.PostLikes.GetByAccountAndPostAsync(accountId, postId);
 
         if (existingLike == null)
         {
-            _repository.PostLikes.Add(
+            _unitOfWork.PostLikes.Add(
                 new PostLike
                 {
                     PostId = postId,
@@ -151,18 +151,18 @@ public class PostService : IPostService
                     CreatedAt = DateTime.UtcNow,
                 }
             );
-            await _repository.SaveChangesAsync();
+            await _unitOfWork.SaveChangesAsync();
         }
     }
 
     public async Task CancelLikePostAsync(Guid postId, Guid accountId)
     {
-        var existingLike = await _repository.PostLikes.GetByAccountAndPostAsync(accountId, postId);
+        var existingLike = await _unitOfWork.PostLikes.GetByAccountAndPostAsync(accountId, postId);
 
         if (existingLike != null)
         {
-            _repository.PostLikes.Remove(existingLike);
-            await _repository.SaveChangesAsync();
+            _unitOfWork.PostLikes.Remove(existingLike);
+            await _unitOfWork.SaveChangesAsync();
         }
     }
 
@@ -173,7 +173,7 @@ public class PostService : IPostService
         int pageSize
     )
     {
-        var comments = await _repository
+        var comments = await _unitOfWork
             .Comments.GetQuery()
             .Where(c =>
                 c.PostId == postId
@@ -207,7 +207,7 @@ public class PostService : IPostService
         do
         {
             link = StringHelper.GenerateRandomString(_settings.TokenLength);
-        } while (await _repository.Posts.GetByLinkAsync(link) != null);
+        } while (await _unitOfWork.Posts.GetByLinkAsync(link) != null);
 
         var newPost = new Post
         {
@@ -218,8 +218,8 @@ public class PostService : IPostService
             CreatedAt = DateTime.UtcNow,
         };
 
-        _repository.Posts.Add(newPost);
-        await _repository.SaveChangesAsync();
+        _unitOfWork.Posts.Add(newPost);
+        await _unitOfWork.SaveChangesAsync();
 
         return new CreatePostResponse
         {

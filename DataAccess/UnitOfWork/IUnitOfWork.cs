@@ -1,13 +1,21 @@
 using DataAccess.Repositories;
 
-namespace DataAccess;
+namespace DataAccess.UnitOfWork;
 
-public interface IBaseRepository
+/// <summary>
+/// Defines the unit of work interface for managing repositories and database transactions.
+/// </summary>
+public interface IUnitOfWork
 {
     /// <summary>
     /// Gets the account repository.
     /// </summary>
     IAccountRepository Accounts { get; }
+
+    /// <summary>
+    /// Gets the picture repository.
+    /// </summary>
+    IPictureRepository Pictures { get; }
 
     /// <summary>
     /// Gets the post repository.

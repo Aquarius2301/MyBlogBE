@@ -201,4 +201,16 @@
     <data name="NoComment" xml:space="preserve">
         <value>Comment not found</value>
     </data>
+    <data name="NewPasswordMustBeDifferent" xml:space="preserve">
+        <value>New password must be different from old password</value>
+    </data>
+    <data name="OldPasswordIncorrect" xml:space="preserve">
+        <value>Old password is incorrect</value>
+    </data>
+    <data name="SelfRemoveAccount1" xml:space="preserve">
+        <value>Account scheduled for removal in</value>
+    </data>
+    <data name="SelfRemoveAccount2" xml:space="preserve">
+        <value> days</value>
+    </data>
 </root>

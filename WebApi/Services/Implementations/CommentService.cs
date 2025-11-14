@@ -1,5 +1,5 @@
 using BusinessObject.Models;
-using DataAccess;
+using DataAccess.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
 using WebApi.Dtos;
 
@@ -7,16 +7,16 @@ namespace WebApi.Services.Implementations;
 
 public class CommentService : ICommentService
 {
-    private readonly IBaseRepository _repository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public CommentService(IBaseRepository repository)
+    public CommentService(IUnitOfWork unitOfWork)
     {
-        _repository = repository;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<Comment?> GetByIdAsync(Guid commentId)
     {
-        return await _repository.Comments.GetByIdAsync(commentId);
+        return await _unitOfWork.Comments.GetByIdAsync(commentId);
     }
 
     public async Task<List<GetChildCommentsResponse>> GetChildCommentList(
@@ -26,7 +26,7 @@ public class CommentService : ICommentService
         int pageSize
     )
     {
-        var comments = await _repository
+        var comments = await _unitOfWork
             .Comments.GetQuery()
             .Where(c =>
                 c.ParentCommentId == commentId
@@ -56,14 +56,14 @@ public class CommentService : ICommentService
 
     public async Task<bool> LikeCommentAsync(Guid commentId, Guid accountId)
     {
-        var existingLike = await _repository.CommentLikes.GetByAccountAndCommentAsync(
+        var existingLike = await _unitOfWork.CommentLikes.GetByAccountAndCommentAsync(
             accountId,
             commentId
         );
 
         if (existingLike == null)
         {
-            _repository.CommentLikes.Add(
+            _unitOfWork.CommentLikes.Add(
                 new CommentLike
                 {
                     CommentId = commentId,
@@ -71,7 +71,7 @@ public class CommentService : ICommentService
                     CreatedAt = DateTime.UtcNow,
                 }
             );
-            await _repository.SaveChangesAsync();
+            await _unitOfWork.SaveChangesAsync();
         }
 
         return true;
@@ -79,18 +79,18 @@ public class CommentService : ICommentService
 
     public async Task<bool> CancelLikeCommentAsync(Guid commentId, Guid accountId)
     {
-        var existingComment = await _repository.Comments.GetByIdAsync(commentId);
+        var existingComment = await _unitOfWork.Comments.GetByIdAsync(commentId);
         if (existingComment != null && existingComment.DeletedAt == null)
         {
-            var existingLike = await _repository.CommentLikes.GetByAccountAndCommentAsync(
+            var existingLike = await _unitOfWork.CommentLikes.GetByAccountAndCommentAsync(
                 accountId,
                 commentId
             );
 
             if (existingLike != null)
             {
-                _repository.CommentLikes.Remove(existingLike);
-                await _repository.SaveChangesAsync();
+                _unitOfWork.CommentLikes.Remove(existingLike);
+                await _unitOfWork.SaveChangesAsync();
             }
 
             return true;

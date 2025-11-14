@@ -122,4 +122,18 @@ public class EmailHelper
                 + "<br/><p>Trân trọng,<br/>Đội ngũ MyBlog</p>"
         );
     }
+
+    public async Task SendAccountRemovalEmailAsync(string email)
+    {
+        var selfRemoveDurationDays = _settings.SelfRemoveDurationDays;
+        await SendEmailAsync(
+            to: email,
+            subject: "Xác nhận xóa tài khoản MyBlog",
+            body: "<h2>Xin chào</h2><br/>"
+                + "<p>Bạn đã yêu cầu xóa tài khoản trên MyBlog.</p>"
+                + $"<p>Tài khoản của bạn sẽ bị xóa vĩnh viễn sau {selfRemoveDurationDays} ngày kể từ hôm nay.</p><br/>"
+                + "<p>Nếu bạn không yêu cầu xóa tài khoản này, vui lòng đăng nhập lại để hủy yêu cầu xóa tài khoản.</p>"
+                + "<br/><p>Trân trọng,<br/>Đội ngũ MyBlog</p>"
+        );
+    }
 }
