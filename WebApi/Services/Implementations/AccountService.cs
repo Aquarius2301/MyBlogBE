@@ -74,18 +74,23 @@ public class AccountService : IAccountService
         return account;
     }
 
-    public async Task<UpdateAccountResponse> UpdateAccountAsync(
+    public async Task<UpdateAccountResponse?> UpdateAccountAsync(
         Guid accountId,
         UpdateAccountRequest request
     )
     {
-        var account =
-            await _unitOfWork.Accounts.GetByIdAsync(accountId)
-            ?? throw new Exception("Account not found"); // User can be deleted
+        var account = await _unitOfWork.Accounts.GetByIdAsync(accountId);
 
+        if (account == null)
+        {
+            return null;
+        }
+
+        var updateTime = DateTime.UtcNow;
         account.Username = request.Username ?? account.Username;
         account.DisplayName = request.DisplayName ?? account.DisplayName;
         account.DateOfBirth = request.DateOfBirth ?? account.DateOfBirth;
+        account.UpdatedAt = updateTime;
 
         await _unitOfWork.SaveChangesAsync();
 
@@ -95,17 +100,23 @@ public class AccountService : IAccountService
             Username = account.Username,
             DisplayName = account.DisplayName,
             DateOfBirth = account.DateOfBirth,
+            UpdatedAt = updateTime,
         };
     }
 
-    public async Task ChangePasswordAsync(Guid accountId, UpdatePasswordRequest request)
+    public async Task<bool> ChangePasswordAsync(Guid accountId, string password)
     {
-        var account =
-            await _unitOfWork.Accounts.GetByIdAsync(accountId)
-            ?? throw new Exception("Account not found"); // User can be deleted
+        var account = await _unitOfWork.Accounts.GetByIdAsync(accountId);
 
-        account.HashedPassword = PasswordHasherHelper.HashPassword(request.NewPassword);
+        if (account == null)
+        {
+            return false;
+        }
+
+        account.HashedPassword = PasswordHasherHelper.HashPassword(password);
         await _unitOfWork.SaveChangesAsync();
+
+        return true;
     }
 
     public async Task<bool> IsPasswordCorrectAsync(Guid accountId, string password)
@@ -116,19 +127,28 @@ public class AccountService : IAccountService
             && PasswordHasherHelper.VerifyPassword(password, account.HashedPassword);
     }
 
-    public async Task<ImageDto> ChangeAvatarAsync(Guid accountId, IFormFile avatarFile)
+    public async Task<ImageDto?> ChangeAvatarAsync(Guid accountId, IFormFile avatarFile)
     {
+        //Check if account exists
+        var account = await _unitOfWork.Accounts.GetByIdAsync(accountId);
+
+        if (account == null)
+        {
+            return null;
+        }
+
+        //Then, upload avatar
         var imageDto = _cloudinaryHelper.Upload(avatarFile);
 
         var picture = await _unitOfWork.Pictures.GetByAccountIdAsync(accountId);
 
-        if (picture != null)
+        if (picture != null) // Update existing avatar
         {
             picture.Link = imageDto.Link;
             picture.PublicId = imageDto.PublicId;
             await _unitOfWork.SaveChangesAsync();
         }
-        else
+        else // Add new avatar
         {
             var avatar = new Picture
             {
@@ -145,16 +165,21 @@ public class AccountService : IAccountService
         return imageDto;
     }
 
-    public async Task SelfRemoveAccount(Guid accountId)
+    public async Task<DateTime?> SelfRemoveAccount(Guid accountId)
     {
-        var account =
-            await _unitOfWork.Accounts.GetByIdAsync(accountId)
-            ?? throw new Exception("Account not found"); // User can be deleted
+        var account = await _unitOfWork.Accounts.GetByIdAsync(accountId);
+
+        if (account == null)
+        {
+            return null;
+        }
 
         account.SelfRemoveTime = DateTime.UtcNow.AddDays(_baseSettings.SelfRemoveDurationDays);
 
         await _emailHelper.SendAccountRemovalEmailAsync(account.Email);
 
         await _unitOfWork.SaveChangesAsync();
+
+        return account.SelfRemoveTime;
     }
 }

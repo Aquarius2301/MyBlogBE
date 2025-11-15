@@ -43,6 +43,10 @@ public class CommentController : ControllerBase
     /// 500 - Returns error message if exception occurs.
     /// </returns>
     [HttpGet("{id}")]
+    [CheckStatusHelper([
+        BusinessObject.Enums.StatusType.Active,
+        BusinessObject.Enums.StatusType.Suspended,
+    ])]
     public async Task<IActionResult> GetChildComments(
         Guid id,
         [FromQuery] PaginationRequest request
@@ -78,6 +82,10 @@ public class CommentController : ControllerBase
     /// 500 - Returns error message if exception occurs.
     /// </returns>
     [HttpPost("{id}/like")]
+    [CheckStatusHelper([
+        BusinessObject.Enums.StatusType.Active,
+        BusinessObject.Enums.StatusType.Suspended,
+    ])]
     public async Task<IActionResult> LikeComment(Guid id)
     {
         try
@@ -109,6 +117,10 @@ public class CommentController : ControllerBase
     /// 500 - Returns error message if exception occurs.
     /// </returns>
     [HttpDelete("{id}/cancel-like")]
+    [CheckStatusHelper([
+        BusinessObject.Enums.StatusType.Active,
+        BusinessObject.Enums.StatusType.Suspended,
+    ])]
     public async Task<IActionResult> CancelLikeComment(Guid id)
     {
         try

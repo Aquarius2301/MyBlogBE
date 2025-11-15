@@ -59,7 +59,7 @@ public class JwtHelper
         {
             new Claim(JwtRegisteredClaimNames.Sub, account.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.UniqueName, account.Username),
-            new Claim("Status", account.Status.ToString()),
+            new Claim("Status", ((int)account.Status).ToString()),
         };
 
         var token = new JwtSecurityToken(

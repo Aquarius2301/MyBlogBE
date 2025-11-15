@@ -67,6 +67,23 @@ public class CreatePostResponse
     public string Content { get; set; } = null!;
 }
 
+public class UpdatePostRequest
+{
+    public string Content { get; set; } = null!;
+}
+
+public class UpdatePostResponse
+{
+    public Guid Id { get; set; }
+    public string Link { get; set; } = null!;
+    public string Content { get; set; } = null!;
+}
+
+public class PostPictureRequest
+{
+    public List<IFormFile> Pictures { get; set; } = null!;
+}
+
 
 // public class PostComment
 // {

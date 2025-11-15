@@ -192,8 +192,14 @@
     <data name="PostCreated" xml:space="preserve">
         <value>Đăng bài thành công</value>
     </data>
+    <data name="PostUpdated" xml:space="preserve">
+        <value>Cập nhật bài đăng thành công</value>
+    </data>
     <data name="InactiveAccountCannotCreatePost" xml:space="preserve">
         <value>Tài khoản này không được phép đăng bài</value>
+    </data>
+    <data name="InactiveAccountCannotUpdatePost" xml:space="preserve">
+        <value>Tài khoản này không được phép cập nhật bài đăng</value>
     </data>
     <data name="PostEmpty" xml:space="preserve">
         <value>Bài đăng không được để trống</value>

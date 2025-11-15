@@ -192,8 +192,20 @@
     <data name="PostCreated" xml:space="preserve">
         <value>Upload post successfully</value>
     </data>
+    <data name="PostUpdated" xml:space="preserve">
+        <value>Update post successfully</value>
+    </data>
+    <data name="PostDeleted" xml:space="preserve">
+        <value>Delete post successfully</value>
+    </data>
     <data name="InactiveAccountCannotCreatePost" xml:space="preserve">
         <value>This account is not allowed to post</value>
+    </data>
+    <data name="InactiveAccountCannotUpdatePost" xml:space="preserve">
+        <value>This account is not allowed to update posts</value>
+    </data>
+    <data name="InactiveAccountCannotDeletePost" xml:space="preserve">
+        <value>This account is not allowed to delete posts</value>
     </data>
     <data name="PostEmpty" xml:space="preserve">
         <value>The post content cannot be empty</value>

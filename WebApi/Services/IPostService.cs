@@ -95,4 +95,11 @@ public interface IPostService
     /// <param name="accountId">The ID of the account creating the post.</param>
     /// <returns>A <see cref="CreatePostResponse" objects representing created post></returns>
     Task<CreatePostResponse> AddPostAsync(CreatePostRequest request, Guid accountId);
+
+    Task<UpdatePostResponse> UpdatePostAsync(UpdatePostRequest request, Guid accountId);
+
+    Task DeletePostAsync(Guid postId);
+    Task<List<ImageDto>> AddPostPicturesAsync(Guid postId, List<IFormFile> pictures);
+
+    Task<List<ImageDto>> UploadPostPicturesAsync(Guid postId, List<IFormFile> pictures);
 }

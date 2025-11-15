@@ -143,6 +143,7 @@ public class AuthController : ControllerBase
     /// 500 - Returns error message if exception occurs.
     /// </returns>
     [HttpGet("confirm")]
+    [CheckStatusHelper([BusinessObject.Enums.StatusType.InActive])]
     public async Task<IActionResult> ConfirmAccount(
         [FromQuery] string type,
         [FromQuery] string token
@@ -187,6 +188,10 @@ public class AuthController : ControllerBase
     /// 500 - Returns error message if exception occurs.
     /// </returns>
     [HttpPost("refresh")]
+    [CheckStatusHelper([
+        BusinessObject.Enums.StatusType.Active,
+        BusinessObject.Enums.StatusType.Suspended,
+    ])]
     public async Task<IActionResult> Refresh([FromBody] RefreshRequest request)
     {
         try
@@ -213,6 +218,10 @@ public class AuthController : ControllerBase
     /// 500 -  Returns error message if exception occurs.
     /// </returns>
     [HttpPost("forgot-password")]
+    [CheckStatusHelper([
+        BusinessObject.Enums.StatusType.Active,
+        BusinessObject.Enums.StatusType.Suspended,
+    ])]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordResponse request)
     {
         try
@@ -239,6 +248,10 @@ public class AuthController : ControllerBase
     /// 500 - Returns error message if exception occurs.
     /// </returns>
     [HttpPost("reset-password")]
+    [CheckStatusHelper([
+        BusinessObject.Enums.StatusType.Active,
+        BusinessObject.Enums.StatusType.Suspended,
+    ])]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
     {
         try
@@ -275,6 +288,10 @@ public class AuthController : ControllerBase
     /// </returns>
     [Authorize]
     [HttpPost("logout")]
+    [CheckStatusHelper([
+        BusinessObject.Enums.StatusType.Active,
+        BusinessObject.Enums.StatusType.Suspended,
+    ])]
     public async Task<IActionResult> Logout()
     {
         try

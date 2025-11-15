@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using Org.BouncyCastle.Ocsp;
 using WebApi.Dtos;
 using WebApi.Helpers;
 using WebApi.Services;
@@ -12,6 +11,10 @@ namespace WebApi.Controllers;
 [Authorize]
 [Route("api/account")]
 [ApiController]
+[CheckStatusHelper([
+    BusinessObject.Enums.StatusType.Active,
+    BusinessObject.Enums.StatusType.Suspended,
+])]
 public class AccountController : ControllerBase
 {
     private readonly IAccountService _service;
@@ -39,12 +42,9 @@ public class AccountController : ControllerBase
 
         var account = await _service.GetProfileByIdAsync(user.Id);
 
-        if (account == null)
-        {
-            return ApiResponse.NotFound("Account not found.");
-        }
-
-        return ApiResponse.Success(account);
+        return account == null
+            ? ApiResponse.NotFound("Account not found.")
+            : ApiResponse.Success(account);
     }
 
     [HttpGet("profile/{id}")]
@@ -52,12 +52,9 @@ public class AccountController : ControllerBase
     {
         var account = await _service.GetProfileByIdAsync(id);
 
-        if (account == null)
-        {
-            return ApiResponse.NotFound("Account not found.");
-        }
-
-        return ApiResponse.Success(account);
+        return account == null
+            ? ApiResponse.NotFound("Account not found.")
+            : ApiResponse.Success(account);
     }
 
     [HttpGet("")]
@@ -102,36 +99,48 @@ public class AccountController : ControllerBase
     [HttpPut("profile/me/change-password")]
     public async Task<IActionResult> ChangeMyPassword([FromBody] UpdatePasswordRequest request)
     {
-        var user = _jwtHelper.GetAccountInfo();
-
-        var errors = new Dictionary<string, string>();
-
-        if (
-            string.IsNullOrWhiteSpace(request.OldPassword)
-            || !await _service.IsPasswordCorrectAsync(user.Id, request.OldPassword)
-        )
+        try
         {
-            errors["OldPassword"] = _lang.Get("OldPasswordIncorrect");
-        }
+            var user = _jwtHelper.GetAccountInfo();
 
-        if (ValidationHelper.IsStrongPassword(request.NewPassword) == false)
+            var errors = new Dictionary<string, string>();
+
+            // Check if the old password is correct
+            if (
+                string.IsNullOrWhiteSpace(request.OldPassword) // empty check
+                || !await _service.IsPasswordCorrectAsync(user.Id, request.OldPassword) // correct check
+            )
+            {
+                errors["OldPassword"] = _lang.Get("OldPasswordIncorrect");
+            }
+
+            // Check if the new password is different from the old password
+            if (request.OldPassword == request.NewPassword)
+            {
+                errors["NewPassword"] = _lang.Get("NewPasswordMustBeDifferent");
+            }
+
+            // Check if the new password is strong enough
+            if (ValidationHelper.IsStrongPassword(request.NewPassword) == false)
+            {
+                errors["NewPassword"] = _lang.Get("PasswordRegister");
+            }
+
+            if (errors.Count > 0)
+            {
+                return ApiResponse.BadRequest(data: errors);
+            }
+
+            var res = await _service.ChangePasswordAsync(user.Id, request.NewPassword);
+
+            return res
+                ? ApiResponse.Success(_lang.Get("PasswordChanged"))
+                : ApiResponse.BadRequest(_lang.Get("PasswordChangeFailed"));
+        }
+        catch (Exception ex)
         {
-            errors["NewPassword"] = _lang.Get("PasswordRegister");
+            return ApiResponse.Error(ex.Message);
         }
-
-        if (request.OldPassword == request.NewPassword)
-        {
-            errors["NewPassword"] = _lang.Get("NewPasswordMustBeDifferent");
-        }
-
-        if (errors.Count > 0)
-        {
-            return ApiResponse.BadRequest(data: errors);
-        }
-
-        await _service.ChangePasswordAsync(user.Id, request);
-
-        return ApiResponse.Success(_lang.Get("PasswordChanged"));
     }
 
     [HttpPut("profile/me/change-avatar")]
@@ -143,7 +152,9 @@ public class AccountController : ControllerBase
 
             var imageDto = await _service.ChangeAvatarAsync(user.Id, request.AvatarFile);
 
-            return ApiResponse.Success(imageDto);
+            return imageDto != null
+                ? ApiResponse.Success(imageDto)
+                : ApiResponse.NotFound(_lang.Get("AvatarChangeFailed"));
         }
         catch (Exception ex)
         {
@@ -158,11 +169,16 @@ public class AccountController : ControllerBase
         {
             var user = _jwtHelper.GetAccountInfo();
 
-            await _service.SelfRemoveAccount(user.Id);
+            var res = await _service.SelfRemoveAccount(user.Id);
 
-            return ApiResponse.Success(
-                $"{_lang.Get("SelfRemoveAccount1")} {_settings.SelfRemoveDurationDays}{_lang.Get("SelfRemoveAccount2")}"
-            );
+            if (res != null)
+            {
+                var content =
+                    $"{_lang.Get("SelfRemoveAccountEmail1")} {_settings.SelfRemoveDurationDays} {_lang.Get("SelfRemoveAccountEmail2")} ({res})";
+                return ApiResponse.Success(content);
+            }
+
+            return ApiResponse.NotFound(_lang.Get("AccountNotFound"));
         }
         catch (Exception ex)
         {

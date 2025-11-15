@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using WebApi.Dtos;
 using WebApi.Helpers;
 using WebApi.Services;
 using WebApi.Services.Implementations;
@@ -88,6 +89,28 @@ builder
             IssuerSigningKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(jwtSettings["Key"]!)
             ),
+        };
+        options.Events = new JwtBearerEvents
+        {
+            // 401 - Unauthorized
+            OnChallenge = async context =>
+            {
+                context.HandleResponse();
+
+                var response = new ApiResponse(401, "Unauthorized");
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+
+                await context.Response.WriteAsJsonAsync(response);
+            },
+
+            // 403  - Forbidden
+            OnForbidden = async context =>
+            {
+                var response = new ApiResponse(403, "Forbidden");
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+
+                await context.Response.WriteAsJsonAsync(response);
+            },
         };
     });
 builder.Services.AddLocalization(options => options.ResourcesPath = "");

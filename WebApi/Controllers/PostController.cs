@@ -43,6 +43,10 @@ public class PostController : ControllerBase
     /// 500 - Returns error message if exception occurs.
     /// </returns>
     [HttpGet("")]
+    [CheckStatusHelper([
+        BusinessObject.Enums.StatusType.Active,
+        BusinessObject.Enums.StatusType.Suspended,
+    ])]
     public async Task<IActionResult> GetPosts([FromQuery] PaginationRequest request)
     {
         try
@@ -75,6 +79,10 @@ public class PostController : ControllerBase
     /// 500 - Returns error message if exception occurs.
     /// </returns>
     [HttpGet("me")]
+    [CheckStatusHelper([
+        BusinessObject.Enums.StatusType.Active,
+        BusinessObject.Enums.StatusType.Suspended,
+    ])]
     public async Task<IActionResult> GetMyPosts([FromQuery] PaginationRequest request)
     {
         try
@@ -108,6 +116,10 @@ public class PostController : ControllerBase
     /// 500 - Returns error message if exception occurs.
     /// </returns>
     [HttpGet("link/{link}")]
+    [CheckStatusHelper([
+        BusinessObject.Enums.StatusType.Active,
+        BusinessObject.Enums.StatusType.Suspended,
+    ])]
     public async Task<IActionResult> GetPostsByLink(string link)
     {
         try
@@ -136,6 +148,10 @@ public class PostController : ControllerBase
     /// 500 - Returns error message if exception occurs.
     /// </returns>
     [HttpPost("{id}/like")]
+    [CheckStatusHelper([
+        BusinessObject.Enums.StatusType.Active,
+        BusinessObject.Enums.StatusType.Suspended,
+    ])]
     public async Task<IActionResult> LikePost(Guid id)
     {
         try
@@ -165,6 +181,10 @@ public class PostController : ControllerBase
     /// 500 - Returns error message if exception occurs.
     /// </returns>
     [HttpDelete("{id}/cancel-like")]
+    [CheckStatusHelper([
+        BusinessObject.Enums.StatusType.Active,
+        BusinessObject.Enums.StatusType.Suspended,
+    ])]
     public async Task<IActionResult> CancelLikePost(Guid id)
     {
         try
@@ -197,6 +217,10 @@ public class PostController : ControllerBase
     /// 500 - Returns error message if exception occurs.
     /// </returns>
     [HttpGet("{postId}/comments")]
+    [CheckStatusHelper([
+        BusinessObject.Enums.StatusType.Active,
+        BusinessObject.Enums.StatusType.Suspended,
+    ])]
     public async Task<IActionResult> GetPostComments(
         Guid postId,
         [FromQuery] PaginationRequest request
@@ -243,6 +267,7 @@ public class PostController : ControllerBase
     /// 500 - Returns error message if exception occurs.
     /// </returns>
     [HttpPost("")]
+    [CheckStatusHelper(BusinessObject.Enums.StatusType.Active)]
     public async Task<IActionResult> AddPost([FromBody] CreatePostRequest request)
     {
         try
@@ -254,14 +279,116 @@ public class PostController : ControllerBase
 
             var user = _jwtHelper.GetAccountInfo();
 
-            if (user.StatusType != BusinessObject.Enums.StatusType.Active)
-            {
-                return ApiResponse.Forbidden(_lang.Get("InactiveAccountCannotCreatePost"));
-            }
-
             var res = await _service.AddPostAsync(request, user.Id);
 
             return ApiResponse.Created(res, _lang.Get("PostCreated"));
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse.Error(ex.Message);
+        }
+    }
+
+    [HttpPut("{id}")]
+    [CheckStatusHelper([
+        BusinessObject.Enums.StatusType.Active,
+        BusinessObject.Enums.StatusType.Suspended,
+    ])]
+    public async Task<IActionResult> UpdatePost(Guid id, [FromBody] UpdatePostRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.Content))
+            {
+                return ApiResponse.BadRequest(_lang.Get("PostEmpty"));
+            }
+
+            var user = _jwtHelper.GetAccountInfo();
+
+            var res = await _service.UpdatePostAsync(request, user.Id);
+
+            return ApiResponse.Created(res, _lang.Get("PostUpdated"));
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse.Error(ex.Message);
+        }
+    }
+
+    [HttpDelete("{id}")]
+    [CheckStatusHelper([
+        BusinessObject.Enums.StatusType.Active,
+        BusinessObject.Enums.StatusType.Suspended,
+    ])]
+    public async Task<IActionResult> DeletePost(Guid id)
+    {
+        try
+        {
+            var user = _jwtHelper.GetAccountInfo();
+
+            var post = await _service.GetByIdAsync(id);
+            if (post == null || post.AccountId != user.Id)
+            {
+                return ApiResponse.NotFound(_lang.Get("NoPost"));
+            }
+
+            await _service.DeletePostAsync(id);
+
+            return ApiResponse.Success(message: _lang.Get("PostDeleted"));
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse.Error(ex.Message);
+        }
+    }
+
+    [HttpPost("{id}/add-picture")]
+    [CheckStatusHelper([BusinessObject.Enums.StatusType.Active])]
+    public async Task<IActionResult> AddPostPictures(Guid id, [FromForm] PostPictureRequest request)
+    {
+        try
+        {
+            var user = _jwtHelper.GetAccountInfo();
+
+            var post = await _service.GetByIdAsync(id);
+            if (post == null || post.AccountId != user.Id)
+            {
+                return ApiResponse.NotFound(_lang.Get("NoPost"));
+            }
+
+            var res = await _service.AddPostPicturesAsync(id, request.Pictures);
+
+            return ApiResponse.Success(res);
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse.Error(ex.Message);
+        }
+    }
+
+    [HttpPost("{id}/change-picture")]
+    [CheckStatusHelper([
+        BusinessObject.Enums.StatusType.Active,
+        BusinessObject.Enums.StatusType.Suspended,
+    ])]
+    public async Task<IActionResult> ChangePicturePost(
+        Guid id,
+        [FromForm] PostPictureRequest request
+    )
+    {
+        try
+        {
+            var user = _jwtHelper.GetAccountInfo();
+
+            var post = await _service.GetByIdAsync(id);
+            if (post == null || post.AccountId != user.Id)
+            {
+                return ApiResponse.NotFound(_lang.Get("NoPost"));
+            }
+
+            var res = await _service.UploadPostPicturesAsync(id, request.Pictures);
+
+            return ApiResponse.Success(res);
         }
         catch (Exception ex)
         {

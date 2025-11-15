@@ -35,6 +35,7 @@ public class UpdateAccountResponse
     public string Username { get; set; } = null!;
     public string DisplayName { get; set; } = null!;
     public DateOnly DateOfBirth { get; set; }
+    public DateTime UpdatedAt { get; set; }
 }
 
 public class UpdatePasswordRequest
