@@ -58,7 +58,10 @@ public interface IAuthService
     /// Registers a new user account.
     /// </summary>
     /// <param name="request">The registration request containing username, password, email, and display name.</param>
-    Task RegisterAccountAsync(RegisterRequest request);
+    /// <returns>
+    /// <para>A <see cref="RegisterResponse"/> object containing the newly created account details.</para>
+    /// </returns>
+    Task<RegisterResponse> RegisterAccountAsync(RegisterRequest request);
 
     /// <summary>
     /// Confirms a newly registered account using the provided confirmation code.

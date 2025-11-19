@@ -54,8 +54,6 @@ public interface IPostService
     /// <param name="postId">The ID of the post to like.</param>
     /// <param name="accountId">The ID of the user performing the like.</param>
     /// <returns>
-    /// True if the like was successful,
-    /// False if the post does not exist.
     /// </returns>
     Task LikePostAsync(Guid postId, Guid accountId);
 
@@ -65,8 +63,6 @@ public interface IPostService
     /// <param name="postId">The ID of the post to unlike.</param>
     /// <param name="accountId">The ID of the user performing the action.</param>
     /// <returns>
-    /// True if the unlike was successful,
-    /// False if the post does not exist.
     /// </returns>
     Task CancelLikePostAsync(Guid postId, Guid accountId);
 
@@ -96,9 +92,13 @@ public interface IPostService
     /// <returns>A <see cref="CreatePostResponse" objects representing created post></returns>
     Task<CreatePostResponse> AddPostAsync(CreatePostRequest request, Guid accountId);
 
-    Task<UpdatePostResponse> UpdatePostAsync(UpdatePostRequest request, Guid accountId);
+    Task<UpdatePostResponse?> UpdatePostAsync(
+        UpdatePostRequest request,
+        Guid postId,
+        Guid accountId
+    );
 
-    Task DeletePostAsync(Guid postId);
+    Task<bool> DeletePostAsync(Guid postId, Guid accountId);
     Task<List<ImageDto>> AddPostPicturesAsync(Guid postId, List<IFormFile> pictures);
 
     Task<List<ImageDto>> UploadPostPicturesAsync(Guid postId, List<IFormFile> pictures);

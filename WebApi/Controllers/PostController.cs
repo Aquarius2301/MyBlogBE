@@ -305,9 +305,11 @@ public class PostController : ControllerBase
 
             var user = _jwtHelper.GetAccountInfo();
 
-            var res = await _service.UpdatePostAsync(request, user.Id);
+            var res = await _service.UpdatePostAsync(request, id, user.Id);
 
-            return ApiResponse.Created(res, _lang.Get("PostUpdated"));
+            return res == null
+                ? ApiResponse.NotFound(_lang.Get("NoPost"))
+                : ApiResponse.Success(res, _lang.Get("PostUpdated"));
         }
         catch (Exception ex)
         {
@@ -327,14 +329,12 @@ public class PostController : ControllerBase
             var user = _jwtHelper.GetAccountInfo();
 
             var post = await _service.GetByIdAsync(id);
-            if (post == null || post.AccountId != user.Id)
-            {
-                return ApiResponse.NotFound(_lang.Get("NoPost"));
-            }
 
-            await _service.DeletePostAsync(id);
+            var res = await _service.DeletePostAsync(id, user.Id);
 
-            return ApiResponse.Success(message: _lang.Get("PostDeleted"));
+            return res
+                ? ApiResponse.Success(message: _lang.Get("PostDeleted"))
+                : ApiResponse.NotFound(_lang.Get("NoPost"));
         }
         catch (Exception ex)
         {

@@ -215,13 +215,14 @@ public class PostService : IPostService
             link = StringHelper.GenerateRandomString(_settings.TokenLength);
         } while (await _unitOfWork.Posts.GetByLinkAsync(link) != null);
 
+        var createTime = DateTime.UtcNow;
         var newPost = new Post
         {
             Id = Guid.NewGuid(),
             Link = link,
             Content = request.Content,
             AccountId = accountId,
-            CreatedAt = DateTime.UtcNow,
+            CreatedAt = createTime,
         };
 
         _unitOfWork.Posts.Add(newPost);
@@ -232,17 +233,26 @@ public class PostService : IPostService
             Id = newPost.Id,
             Link = newPost.Link,
             Content = newPost.Content,
+            CreatedAt = createTime,
         };
     }
 
-    public async Task<UpdatePostResponse> UpdatePostAsync(UpdatePostRequest request, Guid accountId)
+    public async Task<UpdatePostResponse?> UpdatePostAsync(
+        UpdatePostRequest request,
+        Guid postId,
+        Guid accountId
+    )
     {
-        var existingPost =
-            await _unitOfWork.Posts.GetByIdAsync(accountId)
-            ?? throw new Exception("Post not found");
+        var existingPost = await _unitOfWork.Posts.GetByIdAsync(postId);
+        if (existingPost == null || existingPost.AccountId != accountId)
+        {
+            return null;
+        }
+
+        var updateTime = DateTime.UtcNow;
 
         existingPost.Content = request.Content;
-        existingPost.UpdatedAt = DateTime.UtcNow;
+        existingPost.UpdatedAt = updateTime;
 
         await _unitOfWork.SaveChangesAsync();
 
@@ -251,13 +261,16 @@ public class PostService : IPostService
             Id = existingPost.Id,
             Link = existingPost.Link,
             Content = existingPost.Content,
+            UpdatedAt = updateTime,
         };
     }
 
-    public async Task DeletePostAsync(Guid postId)
+    public async Task<bool> DeletePostAsync(Guid postId, Guid accountId)
     {
-        var existingPost =
-            await _unitOfWork.Posts.GetByIdAsync(postId) ?? throw new Exception("Post not found");
+        var existingPost = await _unitOfWork.Posts.GetByIdAsync(postId);
+
+        if (existingPost == null || existingPost.AccountId != accountId)
+            return false;
 
         existingPost.DeletedAt = DateTime.UtcNow;
 
@@ -269,6 +282,8 @@ public class PostService : IPostService
         }
 
         await _unitOfWork.SaveChangesAsync();
+
+        return true;
     }
 
     public async Task<List<ImageDto>> AddPostPicturesAsync(Guid postId, List<IFormFile> pictures)

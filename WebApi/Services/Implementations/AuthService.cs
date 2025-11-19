@@ -119,7 +119,7 @@ public class AuthService : IAuthService
         return false;
     }
 
-    public async Task RegisterAccountAsync(RegisterRequest request)
+    public async Task<RegisterResponse> RegisterAccountAsync(RegisterRequest request)
     {
         var tokenLength = _settings.TokenLength;
         var tokenTimeout = _settings.TokenExpiryMinutes;
@@ -145,6 +145,14 @@ public class AuthService : IAuthService
 
         _unitOfWork.Accounts.Add(newAccount);
         await _unitOfWork.SaveChangesAsync();
+
+        return new RegisterResponse
+        {
+            Id = newAccount.Id,
+            Username = newAccount.Username,
+            DisplayName = newAccount.DisplayName,
+            DateOfBirth = newAccount.DateOfBirth,
+        };
     }
 
     public async Task<bool> ConfirmRegisterAccountAsync(string confirmCode)

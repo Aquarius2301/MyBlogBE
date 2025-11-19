@@ -122,9 +122,9 @@ public class AuthController : ControllerBase
             }
 
             // Register account if no errors
-            await _service.RegisterAccountAsync(request);
+            var res = await _service.RegisterAccountAsync(request);
 
-            return ApiResponse.Success(_lang.Get("RegisterSuccess"));
+            return ApiResponse.Success(res, _lang.Get("RegisterSuccess"));
         }
         catch (Exception ex)
         {

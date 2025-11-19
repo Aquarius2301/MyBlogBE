@@ -3,6 +3,9 @@ using WebApi.Dtos;
 
 namespace WebApi.Services;
 
+/// <summary>
+/// Account Service Interface
+/// </summary>
 public interface IAccountService
 {
     /// <summary>

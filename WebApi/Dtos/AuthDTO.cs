@@ -42,7 +42,6 @@ public class RegisterResponse
     public string DisplayName { get; set; } = null!;
     public DateOnly DateOfBirth { get; set; }
     public string Email { get; set; } = null!;
-    public string Password { get; set; } = null!;
 }
 
 public class ForgotPasswordResponse
