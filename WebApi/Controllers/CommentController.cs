@@ -141,4 +141,108 @@ public class CommentController : ControllerBase
             return ApiResponse.Error(ex.Message);
         }
     }
+
+    [HttpPost]
+    [CheckStatusHelper([BusinessObject.Enums.StatusType.Active])]
+    public async Task<IActionResult> AddComment([FromForm] CreateCommentRequest request)
+    {
+        try
+        {
+            var user = _jwtHelper.GetAccountInfo();
+
+            if (request.ParentCommentId != null)
+            {
+                var parentComment = await _service.GetByIdAsync(request.ParentCommentId.Value);
+                if (parentComment == null)
+                {
+                    return ApiResponse.NotFound(_lang.Get("NoParentComment"));
+                }
+                if (request.ReplyAccountId == null) // if there is a parent comment, but no reply account id
+                {
+                    return ApiResponse.BadRequest(_lang.Get("NoReplyAccount"));
+                }
+            }
+            else if (request.ReplyAccountId != null)
+            {
+                // if there is no parent comment, but reply account id is provided
+                return ApiResponse.BadRequest(_lang.Get("NoParentComment"));
+            }
+
+            var pictures = new List<ImageDto>();
+
+            if (request.Images != null && request.Images.Count > 0)
+            {
+                pictures = await _service.AddImageAsync(request.Images);
+            }
+
+            var res = await _service.AddCommentAsync(user.Id, request, pictures);
+
+            return ApiResponse.Success(res);
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse.Error(ex.Message);
+        }
+    }
+
+    [HttpPut("{id}")]
+    [CheckStatusHelper([BusinessObject.Enums.StatusType.Active])]
+    public async Task<IActionResult> UpdateComment(Guid id, [FromForm] UpdateCommentRequest request)
+    {
+        try
+        {
+            var user = _jwtHelper.GetAccountInfo();
+
+            var existingComment = await _service.GetByIdAsync(id);
+            if (existingComment == null || existingComment.AccountId != user.Id)
+            {
+                return ApiResponse.NotFound(_lang.Get("NoComment"));
+            }
+
+            var pictures = new List<ImageDto>();
+
+            if (request.ClearImages)
+            {
+                Console.WriteLine("Updating images...");
+                pictures = await _service.UpdateImageAsync(id, request.Images ?? []);
+            }
+            else
+                pictures = null;
+
+            var res = await _service.UpdateCommentAsync(id, request, pictures);
+            return res != null
+                ? ApiResponse.Success(res)
+                : ApiResponse.NotFound(_lang.Get("NoComment"));
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse.Error(ex.ToString());
+        }
+    }
+
+    [HttpDelete("{id}")]
+    [CheckStatusHelper([BusinessObject.Enums.StatusType.Active])]
+    public async Task<IActionResult> DeleteComment(Guid id)
+    {
+        try
+        {
+            var user = _jwtHelper.GetAccountInfo();
+
+            var existingComment = await _service.GetByIdAsync(id);
+            if (existingComment == null || existingComment.AccountId != user.Id)
+            {
+                return ApiResponse.NotFound(_lang.Get("NoComment"));
+            }
+
+            await _service.DeleteImageAsync(id);
+
+            var res = await _service.DeleteCommentAsync(id);
+
+            return res ? ApiResponse.Success() : ApiResponse.NotFound(_lang.Get("NoComment"));
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse.Error(ex.Message);
+        }
+    }
 }

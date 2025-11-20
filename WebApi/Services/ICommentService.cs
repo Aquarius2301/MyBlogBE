@@ -53,4 +53,21 @@ public interface ICommentService
     /// False if the comment does not exist,
     /// </returns>
     Task<bool> CancelLikeCommentAsync(Guid commentId, Guid accountId);
+
+    Task<CreateCommentResponse> AddCommentAsync(
+        Guid accountId,
+        CreateCommentRequest request,
+        List<ImageDto> images
+    );
+    Task<List<ImageDto>> AddImageAsync(List<IFormFile> files);
+
+    Task<UpdateCommentResponse?> UpdateCommentAsync(
+        Guid commentId,
+        UpdateCommentRequest request,
+        List<ImageDto>? images
+    );
+    Task<List<ImageDto>> UpdateImageAsync(Guid commentId, List<IFormFile> files);
+
+    Task<bool> DeleteCommentAsync(Guid commentId);
+    Task<bool> DeleteImageAsync(Guid commentId);
 }

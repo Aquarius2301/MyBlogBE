@@ -2,6 +2,7 @@ using System;
 using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
 using WebApi.Dtos;
 using WebApi.Settings;
 
@@ -38,6 +39,14 @@ public class CloudinaryHelper
     /// <exception cref="Exception">Thrown if the upload fails.</exception>
     public ImageDto Upload(IFormFile file)
     {
+        Console.WriteLine("Uploading image to Cloudinary...");
+        const long MaxFileSize = 10 * 1024 * 1024;
+
+        if (file.Length > MaxFileSize)
+        {
+            throw new Exception("File size exceeds the maximum limit of 10 MB.");
+        }
+
         var uploadParams = new ImageUploadParams()
         {
             File = new FileDescription(file.FileName, file.OpenReadStream()),
@@ -68,6 +77,7 @@ public class CloudinaryHelper
     /// </returns>
     public bool Delete(string publicId)
     {
+        Console.WriteLine("Deleting image from Cloudinary...");
         var deletionParams = new DeletionParams(publicId);
         var result = _cloudinary.Destroy(deletionParams);
 

@@ -15,6 +15,14 @@ public interface IRepository<T>
     void Add(T entity);
 
     /// <summary>
+    /// Adds a range of <typeparamref name="T"/> entities to the context.
+    /// </summary>
+    /// <param name="entities">
+    /// An enumerable collection of <typeparamref name="T"/> objects to add.
+    /// </param>
+    void AddRange(IEnumerable<T> entities);
+
+    /// <summary>
     /// Removes the <typeparamref name="T"/> entity from the context.
     /// </summary>
     /// <param name="entity">

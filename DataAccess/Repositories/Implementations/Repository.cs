@@ -17,6 +17,11 @@ public class Repository<T> : IRepository<T>
         _context.Set<T>().Add(entity);
     }
 
+    public void AddRange(IEnumerable<T> entities)
+    {
+        _context.Set<T>().AddRange(entities);
+    }
+
     public Task<ICollection<T>> GetAllAsync(bool includeDeleted = false)
     {
         throw new NotImplementedException();
