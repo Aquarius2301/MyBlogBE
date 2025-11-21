@@ -50,7 +50,7 @@ public class ValidationHelper
     /// <returns></returns>
     public static bool IsValidString(
         string input,
-        bool onlyAlphaNumeric,
+        bool onlyAlphaNumeric = false,
         int minLength = 1,
         int maxLength = 1000
     )

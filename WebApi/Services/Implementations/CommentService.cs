@@ -3,6 +3,7 @@ using DataAccess.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
 using WebApi.Dtos;
 using WebApi.Helpers;
+using WebApi.Middlewares;
 
 namespace WebApi.Services.Implementations;
 
@@ -59,6 +60,12 @@ public class CommentService : ICommentService
 
     public async Task<bool> LikeCommentAsync(Guid commentId, Guid accountId)
     {
+        var existingComment = await _unitOfWork.Comments.GetByIdAsync(commentId);
+        if (existingComment == null)
+        {
+            return false;
+        }
+
         var existingLike = await _unitOfWork.CommentLikes.GetByAccountAndCommentAsync(
             accountId,
             commentId
@@ -83,31 +90,65 @@ public class CommentService : ICommentService
     public async Task<bool> CancelLikeCommentAsync(Guid commentId, Guid accountId)
     {
         var existingComment = await _unitOfWork.Comments.GetByIdAsync(commentId);
-        if (existingComment != null && existingComment.DeletedAt == null)
+
+        if (existingComment == null)
         {
-            var existingLike = await _unitOfWork.CommentLikes.GetByAccountAndCommentAsync(
-                accountId,
-                commentId
-            );
-
-            if (existingLike != null)
-            {
-                _unitOfWork.CommentLikes.Remove(existingLike);
-                await _unitOfWork.SaveChangesAsync();
-            }
-
-            return true;
+            return false;
         }
 
-        return false;
+        var existingLike = await _unitOfWork.CommentLikes.GetByAccountAndCommentAsync(
+            accountId,
+            commentId
+        );
+
+        if (existingLike != null)
+        {
+            _unitOfWork.CommentLikes.Remove(existingLike);
+            await _unitOfWork.SaveChangesAsync();
+        }
+
+        return true;
     }
 
     public async Task<CreateCommentResponse> AddCommentAsync(
         Guid accountId,
-        CreateCommentRequest request,
-        List<ImageDto> images
+        CreateCommentRequest request
     )
     {
+        if (request.ParentCommentId != null)
+        {
+            var parentComment = await _unitOfWork.Comments.GetByIdAsync(
+                request.ParentCommentId.Value
+            );
+            if (parentComment == null)
+            {
+                throw new AppException("Parent comment does not exist", 404);
+            }
+        }
+
+        if (request.ReplyAccountId != null)
+        {
+            var parentComment = await _unitOfWork.Accounts.GetByIdAsync(
+                request.ReplyAccountId.Value
+            );
+
+            if (parentComment == null)
+            {
+                throw new AppException("Reply account does not exist", 404);
+            }
+        }
+
+        var post = await _unitOfWork.Posts.GetByIdAsync(request.PostId);
+
+        if (post == null)
+        {
+            throw new AppException("Post does not exist", 404);
+        }
+
+        // Upload images to Cloudinary
+        var images = await _cloudinaryHelper.UploadImages(request.Images);
+
+        // Add comment to database
         var comment = new Comment
         {
             Id = Guid.NewGuid(),
@@ -121,6 +162,7 @@ public class CommentService : ICommentService
 
         _unitOfWork.Comments.Add(comment);
 
+        // Add pictures to database
         var picture = images
             .Select(i => new Picture
             {
@@ -151,27 +193,47 @@ public class CommentService : ICommentService
     public async Task<UpdateCommentResponse?> UpdateCommentAsync(
         Guid commentId,
         UpdateCommentRequest request,
-        List<ImageDto>? images
+        Guid accountId
     )
     {
+        var uploadedImages = new List<ImageDto>();
+        var images = new List<ImageDto>();
+
         var existingComment = await _unitOfWork
             .Comments.GetQuery()
             .Include(c => c.Pictures)
-            .FirstOrDefaultAsync(c => c.Id == commentId);
-        if (existingComment == null || existingComment.DeletedAt != null)
+            .FirstOrDefaultAsync(c =>
+                c.Id == commentId && c.AccountId == accountId && c.DeletedAt == null
+            );
+
+        if (existingComment == null)
         {
             return null;
         }
 
+        // if ClearImages is true,  delete all existing images and upload new ones.
+        // if ClearImages is false, keep existing images (only update the content).
+        if (request.ClearImages)
+        {
+            await _cloudinaryHelper.DeleteImages(
+                existingComment.Pictures.Select(p => p.PublicId).ToList()
+            );
+
+            images = await _cloudinaryHelper.UploadImages(request.Images);
+        }
+
+        // Update comment content
         existingComment.Content = request.Content;
         existingComment.UpdatedAt = DateTime.UtcNow;
 
-        if (images != null)
+        if (request.ClearImages)
         {
+            // Delete existing pictures from database
             var existingPictures = await _unitOfWork.Pictures.GetByCommentIdAsync(commentId);
 
             _unitOfWork.Pictures.RemoveRange(existingPictures);
 
+            // Add new pictures to database
             var picture = images
                 .Select(i => new Picture
                 {
@@ -196,13 +258,23 @@ public class CommentService : ICommentService
         };
     }
 
-    public async Task<bool> DeleteCommentAsync(Guid commentId)
+    public async Task<bool> DeleteCommentAsync(Guid commentId, Guid accountId)
     {
-        var existingComment = await _unitOfWork.Comments.GetByIdAsync(commentId);
-        if (existingComment == null || existingComment.DeletedAt != null)
+        var existingComment = await _unitOfWork
+            .Comments.GetQuery()
+            .Include(c => c.Pictures)
+            .FirstOrDefaultAsync(c =>
+                c.Id == commentId && c.AccountId == accountId && c.DeletedAt == null
+            );
+
+        if (existingComment == null)
         {
             return false;
         }
+
+        await _cloudinaryHelper.DeleteImages(
+            existingComment.Pictures.Select(p => p.PublicId).ToList()
+        );
 
         existingComment.DeletedAt = DateTime.UtcNow;
 
@@ -210,53 +282,6 @@ public class CommentService : ICommentService
         _unitOfWork.Pictures.RemoveRange(existingPictures);
 
         await _unitOfWork.SaveChangesAsync();
-
-        return true;
-    }
-
-    public async Task<List<ImageDto>> AddImageAsync(List<IFormFile> files)
-    {
-        var uploadedImages = new List<ImageDto>();
-
-        foreach (var file in files)
-        {
-            var res = await _cloudinaryHelper.Upload(file);
-            uploadedImages.Add(new ImageDto { Link = res.Link, PublicId = res.PublicId });
-        }
-
-        return uploadedImages;
-    }
-
-    public async Task<List<ImageDto>> UpdateImageAsync(Guid commentId, List<IFormFile> files)
-    {
-        var uploadedImages = new List<ImageDto>();
-
-        await DeleteImageAsync(commentId);
-
-        if (files == null || !files.Any())
-            return [];
-
-        foreach (var file in files)
-        {
-            if (file != null)
-            {
-                var res = await _cloudinaryHelper.Upload(file);
-
-                uploadedImages.Add(new ImageDto { Link = res.Link, PublicId = res.PublicId });
-            }
-        }
-
-        return uploadedImages;
-    }
-
-    public async Task<bool> DeleteImageAsync(Guid commentId)
-    {
-        var oldFiles = await _unitOfWork.Pictures.GetByCommentIdAsync(commentId);
-
-        foreach (var file in oldFiles)
-        {
-            await _cloudinaryHelper.Delete(file.PublicId);
-        }
 
         return true;
     }

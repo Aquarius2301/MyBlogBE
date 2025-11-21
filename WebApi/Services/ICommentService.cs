@@ -54,20 +54,13 @@ public interface ICommentService
     /// </returns>
     Task<bool> CancelLikeCommentAsync(Guid commentId, Guid accountId);
 
-    Task<CreateCommentResponse> AddCommentAsync(
-        Guid accountId,
-        CreateCommentRequest request,
-        List<ImageDto> images
-    );
-    Task<List<ImageDto>> AddImageAsync(List<IFormFile> files);
+    Task<CreateCommentResponse> AddCommentAsync(Guid accountId, CreateCommentRequest request);
 
     Task<UpdateCommentResponse?> UpdateCommentAsync(
         Guid commentId,
         UpdateCommentRequest request,
-        List<ImageDto>? images
+        Guid accountId
     );
-    Task<List<ImageDto>> UpdateImageAsync(Guid commentId, List<IFormFile> files);
 
-    Task<bool> DeleteCommentAsync(Guid commentId);
-    Task<bool> DeleteImageAsync(Guid commentId);
+    Task<bool> DeleteCommentAsync(Guid commentId, Guid accountId);
 }

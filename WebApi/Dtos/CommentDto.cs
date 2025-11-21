@@ -53,7 +53,7 @@ public class CreateCommentResponse
 public class UpdateCommentRequest
 {
     public string Content { get; set; } = null!;
-    public List<IFormFile>? Images { get; set; } = null; //
+    public List<IFormFile> Images { get; set; } = [];
 
     public bool ClearImages { get; set; } = false; // true to clear all images
 }

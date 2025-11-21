@@ -14,6 +14,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using WebApi.Dtos;
 using WebApi.Helpers;
+using WebApi.Middlewares;
 using WebApi.Services;
 using WebApi.Services.Implementations;
 using WebApi.Settings;
@@ -164,6 +165,9 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// Middlewares
+app.UseMiddleware<ExceptionMiddleware>();
 
 app.UseRequestLocalization(
     app.Services.GetRequiredService<IOptions<RequestLocalizationOptions>>().Value

@@ -144,6 +144,9 @@ public class AccountService : IAccountService
 
         if (picture != null) // Update existing avatar
         {
+            // Delete old avatar from Cloudinary
+            await _cloudinaryHelper.Delete(picture.PublicId);
+
             picture.Link = imageDto.Link;
             picture.PublicId = imageDto.PublicId;
             await _unitOfWork.SaveChangesAsync();

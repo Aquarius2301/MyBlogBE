@@ -70,4 +70,10 @@ public class ApiResponse
         var res = new ApiResponse(500, message, data);
         return new ObjectResult(res) { StatusCode = 500 };
     }
+
+    public static IActionResult Custom(int statusCode, string message, object? data = null)
+    {
+        var res = new ApiResponse(statusCode, message, data);
+        return new ObjectResult(res) { StatusCode = statusCode };
+    }
 }
