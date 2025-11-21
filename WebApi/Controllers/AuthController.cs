@@ -79,57 +79,48 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
-        try
+        var errors = new Dictionary<string, string>();
+
+        // Check validation
+        if (!ValidationHelper.IsValidString(request.Username, true, 3, 20))
+            errors["Username"] = _lang.Get("UsernameRegister");
+
+        if (!ValidationHelper.IsValidString(request.DisplayName, false, 3, 50))
+            errors["DisplayName"] = _lang.Get("DisplaynameRegister");
+
+        if (!ValidationHelper.IsStrongPassword(request.Password))
+            errors["Password"] = _lang.Get("PasswordRegister");
+
+        if (!ValidationHelper.IsValidEmail(request.Email))
+            errors["Email"] = _lang.Get("EmailRegister");
+
+        if (
+            !ValidationHelper.IsValidDateOfBirth(request.DateOfBirth.ToDateTime(new TimeOnly(0, 0)))
+        )
+            errors["DateOfBirth"] = _lang.Get("DobRegister");
+        if (errors.Any())
         {
-            var errors = new Dictionary<string, string>();
-
-            // Check validation
-            if (!ValidationHelper.IsValidString(request.Username, true, 3, 20))
-                errors["Username"] = _lang.Get("UsernameRegister");
-
-            if (!ValidationHelper.IsValidString(request.DisplayName, false, 3, 50))
-                errors["DisplayName"] = _lang.Get("DisplaynameRegister");
-
-            if (!ValidationHelper.IsStrongPassword(request.Password))
-                errors["Password"] = _lang.Get("PasswordRegister");
-
-            if (!ValidationHelper.IsValidEmail(request.Email))
-                errors["Email"] = _lang.Get("EmailRegister");
-
-            if (
-                !ValidationHelper.IsValidDateOfBirth(
-                    request.DateOfBirth.ToDateTime(new TimeOnly(0, 0))
-                )
-            )
-                errors["DateOfBirth"] = _lang.Get("DobRegister");
-            if (errors.Any())
-            {
-                return ApiResponse.BadRequest(_lang.Get("RegisterFailed"), errors);
-            }
-
-            // Check existence
-            if (await _service.GetByUsernameAsync(request.Username) == null)
-            {
-                errors["Username"] = _lang.Get("UsernameExist");
-            }
-            if (await _service.GetByEmailAsync(request.Email) == null)
-            {
-                errors["Email"] = _lang.Get("EmailExist");
-            }
-            if (errors.Any())
-            {
-                return ApiResponse.BadRequest(_lang.Get("RegisterFailed"), errors);
-            }
-
-            // Register account if no errors
-            var res = await _service.RegisterAccountAsync(request);
-
-            return ApiResponse.Success(res, _lang.Get("RegisterSuccess"));
+            return ApiResponse.BadRequest(_lang.Get("RegisterFailed"), errors);
         }
-        catch (Exception ex)
+
+        // Check existence
+        if (await _service.GetByUsernameAsync(request.Username) == null)
         {
-            return ApiResponse.Error(ex.Message);
+            errors["Username"] = _lang.Get("UsernameExist");
         }
+        if (await _service.GetByEmailAsync(request.Email) == null)
+        {
+            errors["Email"] = _lang.Get("EmailExist");
+        }
+        if (errors.Any())
+        {
+            return ApiResponse.BadRequest(_lang.Get("RegisterFailed"), errors);
+        }
+
+        // Register account if no errors
+        var res = await _service.RegisterAccountAsync(request);
+
+        return ApiResponse.Success(res, _lang.Get("RegisterSuccess"));
     }
 
     /// <summary>
@@ -149,32 +140,25 @@ public class AuthController : ControllerBase
         [FromQuery] string token
     )
     {
-        try
+        if (type != "register" && type != "forgotPassword")
         {
-            if (type != "register" && type != "forgotPassword")
-            {
-                return ApiResponse.BadRequest(_lang.Get("TypeError"));
-            }
-
-            if (type == "register")
-            {
-                var res = await _service.ConfirmRegisterAccountAsync(token);
-                return res
-                    ? ApiResponse.Success(_lang.Get("EmailConfirmed"))
-                    : ApiResponse.BadRequest(_lang.Get("InvalidToken"));
-            }
-            else
-            {
-                var res = await _service.ConfirmForgotPasswordAccountAsync(token);
-
-                return !string.IsNullOrEmpty(res)
-                    ? ApiResponse.Success(res)
-                    : ApiResponse.BadRequest(_lang.Get("InvalidToken"));
-            }
+            return ApiResponse.BadRequest(_lang.Get("TypeError"));
         }
-        catch (Exception ex)
+
+        if (type == "register")
         {
-            return ApiResponse.Error(ex.Message);
+            var res = await _service.ConfirmRegisterAccountAsync(token);
+            return res
+                ? ApiResponse.Success(_lang.Get("EmailConfirmed"))
+                : ApiResponse.BadRequest(_lang.Get("InvalidToken"));
+        }
+        else
+        {
+            var res = await _service.ConfirmForgotPasswordAccountAsync(token);
+
+            return !string.IsNullOrEmpty(res)
+                ? ApiResponse.Success(res)
+                : ApiResponse.BadRequest(_lang.Get("InvalidToken"));
         }
     }
 
@@ -194,18 +178,11 @@ public class AuthController : ControllerBase
     ])]
     public async Task<IActionResult> Refresh([FromBody] RefreshRequest request)
     {
-        try
-        {
-            var authResponse = await _service.GetRefreshTokenAsync(request.Token);
+        var authResponse = await _service.GetRefreshTokenAsync(request.Token);
 
-            return authResponse != null
-                ? ApiResponse.Success(authResponse)
-                : ApiResponse.Unauthorized(_lang.Get("InvalidToken"));
-        }
-        catch (Exception ex)
-        {
-            return ApiResponse.Error(ex.Message);
-        }
+        return authResponse != null
+            ? ApiResponse.Success(authResponse)
+            : ApiResponse.Unauthorized(_lang.Get("InvalidToken"));
     }
 
     /// <summary>
@@ -224,18 +201,11 @@ public class AuthController : ControllerBase
     ])]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordResponse request)
     {
-        try
-        {
-            var res = await _service.ForgotPasswordAsync(request.Identifier);
+        var res = await _service.ForgotPasswordAsync(request.Identifier);
 
-            return res
-                ? ApiResponse.Success(_lang.Get("ForgotPassword"))
-                : ApiResponse.BadRequest(_lang.Get("NoAccount"));
-        }
-        catch (Exception ex)
-        {
-            return ApiResponse.Error(ex.Message);
-        }
+        return res
+            ? ApiResponse.Success(_lang.Get("ForgotPassword"))
+            : ApiResponse.BadRequest(_lang.Get("NoAccount"));
     }
 
     /// <summary>
@@ -254,28 +224,21 @@ public class AuthController : ControllerBase
     ])]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
     {
-        try
+        if (string.IsNullOrWhiteSpace(request.ConfirmCode))
         {
-            if (string.IsNullOrWhiteSpace(request.ConfirmCode))
-            {
-                return ApiResponse.BadRequest(_lang.Get("TokenEmpty"));
-            }
-
-            if (string.IsNullOrWhiteSpace(request.NewPassword))
-            {
-                return ApiResponse.BadRequest(_lang.Get("PasswordEmpty"));
-            }
-
-            var res = await _service.ResetPasswordAsync(request.ConfirmCode, request.NewPassword);
-
-            return res
-                ? ApiResponse.Success(_lang.Get("PasswordChanged"))
-                : ApiResponse.BadRequest(_lang.Get("InvalidToken"));
+            return ApiResponse.BadRequest(_lang.Get("TokenEmpty"));
         }
-        catch (Exception ex)
+
+        if (string.IsNullOrWhiteSpace(request.NewPassword))
         {
-            return ApiResponse.Error(ex.Message);
+            return ApiResponse.BadRequest(_lang.Get("PasswordEmpty"));
         }
+
+        var res = await _service.ResetPasswordAsync(request.ConfirmCode, request.NewPassword);
+
+        return res
+            ? ApiResponse.Success(_lang.Get("PasswordChanged"))
+            : ApiResponse.BadRequest(_lang.Get("InvalidToken"));
     }
 
     /// <summary>
@@ -294,17 +257,10 @@ public class AuthController : ControllerBase
     ])]
     public async Task<IActionResult> Logout()
     {
-        try
-        {
-            var user = _jwtHelper.GetAccountInfo();
+        var user = _jwtHelper.GetAccountInfo();
 
-            var ok = await _service.RemoveRefresh(user.Id);
+        var ok = await _service.RemoveRefresh(user.Id);
 
-            return ok ? ApiResponse.Success(_lang.Get("LoggedOut")) : ApiResponse.Unauthorized();
-        }
-        catch (Exception ex)
-        {
-            return Problem(ex.Message);
-        }
+        return ok ? ApiResponse.Success(_lang.Get("LoggedOut")) : ApiResponse.Unauthorized();
     }
 }
