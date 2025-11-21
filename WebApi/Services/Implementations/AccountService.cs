@@ -138,7 +138,7 @@ public class AccountService : IAccountService
         }
 
         //Then, upload avatar
-        var imageDto = _cloudinaryHelper.Upload(avatarFile);
+        var imageDto = await _cloudinaryHelper.Upload(avatarFile);
 
         var picture = await _unitOfWork.Pictures.GetByAccountIdAsync(accountId);
 

@@ -220,7 +220,7 @@ public class CommentService : ICommentService
 
         foreach (var file in files)
         {
-            var res = _cloudinaryHelper.Upload(file);
+            var res = await _cloudinaryHelper.Upload(file);
             uploadedImages.Add(new ImageDto { Link = res.Link, PublicId = res.PublicId });
         }
 
@@ -240,7 +240,7 @@ public class CommentService : ICommentService
         {
             if (file != null)
             {
-                var res = _cloudinaryHelper.Upload(file);
+                var res = await _cloudinaryHelper.Upload(file);
 
                 uploadedImages.Add(new ImageDto { Link = res.Link, PublicId = res.PublicId });
             }
@@ -255,7 +255,7 @@ public class CommentService : ICommentService
 
         foreach (var file in oldFiles)
         {
-            _cloudinaryHelper.Delete(file.PublicId);
+            await _cloudinaryHelper.Delete(file.PublicId);
         }
 
         return true;

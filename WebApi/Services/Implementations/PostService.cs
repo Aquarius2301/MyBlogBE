@@ -277,7 +277,7 @@ public class PostService : IPostService
         var existingPictures = await _unitOfWork.Pictures.GetByPostIdAsync(postId);
         foreach (var existingPicture in existingPictures)
         {
-            _cloudinaryHelper.Delete(existingPicture.PublicId);
+            await _cloudinaryHelper.Delete(existingPicture.PublicId);
             _unitOfWork.Pictures.Remove(existingPicture);
         }
 
@@ -292,7 +292,7 @@ public class PostService : IPostService
 
         foreach (var picture in pictures)
         {
-            var pictureLink = _cloudinaryHelper.Upload(picture);
+            var pictureLink = await _cloudinaryHelper.Upload(picture);
 
             pictureLinks.Add(
                 new ImageDto { PublicId = pictureLink.PublicId, Link = pictureLink.Link }
@@ -321,13 +321,13 @@ public class PostService : IPostService
 
         foreach (var existingPicture in existingPictures)
         {
-            _cloudinaryHelper.Delete(existingPicture.PublicId);
+            await _cloudinaryHelper.Delete(existingPicture.PublicId);
             _unitOfWork.Pictures.Remove(existingPicture);
         }
 
         foreach (var picture in pictures)
         {
-            var pictureLink = _cloudinaryHelper.Upload(picture);
+            var pictureLink = await _cloudinaryHelper.Upload(picture);
 
             pictureLinks.Add(
                 new ImageDto { PublicId = pictureLink.PublicId, Link = pictureLink.Link }
