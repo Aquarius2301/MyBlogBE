@@ -1,10 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
 using WebApi.Dtos;
 using WebApi.Helpers;
 using WebApi.Services;
-using WebApi.Settings;
 
 namespace WebApi.Controllers;
 
@@ -111,7 +109,7 @@ public class PostController : ControllerBase
     /// <param name="id">The unique identifier of the post to like.</param>
     /// <returns>
     /// 200 - Returns success if post is liked successfully.
-    /// 400 - Returns error if post does not exist.
+    /// 404 - Returns error if post does not exist.
     /// 500 - Returns error message if exception occurs.
     /// </returns>
     [HttpPost("{id}/like")]
@@ -121,14 +119,11 @@ public class PostController : ControllerBase
     ])]
     public async Task<IActionResult> LikePost(Guid id)
     {
-        if (await _service.GetByIdAsync(id) == null)
-        {
-            return ApiResponse.BadRequest(_lang.Get("NoPost"));
-        }
-
         var user = _jwtHelper.GetAccountInfo();
 
-        return ApiResponse.Success();
+        var res = await _service.LikePostAsync(id, user.Id);
+
+        return res ? ApiResponse.Success() : ApiResponse.NotFound(_lang.Get("NoPost"));
     }
 
     /// <summary>
@@ -137,7 +132,7 @@ public class PostController : ControllerBase
     /// <param name="id">The unique identifier of the post to unlike.</param>
     /// <returns>
     /// 200 - Returns success if like is removed successfully.
-    /// 400 - Returns error if post does not exist.
+    /// 404 - Returns error if post does not exist.
     /// 500 - Returns error message if exception occurs.
     /// </returns>
     [HttpDelete("{id}/cancel-like")]
@@ -147,16 +142,11 @@ public class PostController : ControllerBase
     ])]
     public async Task<IActionResult> CancelLikePost(Guid id)
     {
-        if (await _service.GetByIdAsync(id) == null)
-        {
-            return ApiResponse.BadRequest(_lang.Get("NoPost"));
-        }
-
         var user = _jwtHelper.GetAccountInfo();
 
-        await _service.CancelLikePostAsync(id, user.Id);
+        var res = await _service.CancelLikePostAsync(id, user.Id);
 
-        return ApiResponse.Success();
+        return res ? ApiResponse.Success() : ApiResponse.NotFound(_lang.Get("NoPost"));
     }
 
     /// <summary>
@@ -179,11 +169,6 @@ public class PostController : ControllerBase
         [FromQuery] PaginationRequest request
     )
     {
-        if (await _service.GetByIdAsync(postId) == null)
-        {
-            return ApiResponse.NotFound(_lang.Get("NoPost"));
-        }
-
         var user = _jwtHelper.GetAccountInfo();
         var res = await _service.GetPostCommentsList(
             postId,
@@ -192,14 +177,16 @@ public class PostController : ControllerBase
             request.PageSize
         );
 
-        return ApiResponse.Success(
-            new PaginationResponse
-            {
-                Items = res,
-                Cursor = res.Count() > 0 ? res.Last().CreatedAt : null,
-                PageSize = request.PageSize,
-            }
-        );
+        return res != null
+            ? ApiResponse.Success(
+                new PaginationResponse
+                {
+                    Items = res,
+                    Cursor = res.Count() > 0 ? res.Last().CreatedAt : null,
+                    PageSize = request.PageSize,
+                }
+            )
+            : ApiResponse.NotFound(_lang.Get("NoPost"));
     }
 
     /// <summary>
@@ -258,52 +245,10 @@ public class PostController : ControllerBase
     {
         var user = _jwtHelper.GetAccountInfo();
 
-        var post = await _service.GetByIdAsync(id);
-
         var res = await _service.DeletePostAsync(id, user.Id);
 
         return res
             ? ApiResponse.Success(message: _lang.Get("PostDeleted"))
             : ApiResponse.NotFound(_lang.Get("NoPost"));
-    }
-
-    [HttpPost("{id}/add-picture")]
-    [CheckStatusHelper([BusinessObject.Enums.StatusType.Active])]
-    public async Task<IActionResult> AddPostPictures(Guid id, [FromForm] PostPictureRequest request)
-    {
-        var user = _jwtHelper.GetAccountInfo();
-
-        var post = await _service.GetByIdAsync(id);
-        if (post == null || post.AccountId != user.Id)
-        {
-            return ApiResponse.NotFound(_lang.Get("NoPost"));
-        }
-
-        var res = await _service.AddPostPicturesAsync(id, request.Pictures);
-
-        return ApiResponse.Success(res);
-    }
-
-    [HttpPost("{id}/change-picture")]
-    [CheckStatusHelper([
-        BusinessObject.Enums.StatusType.Active,
-        BusinessObject.Enums.StatusType.Suspended,
-    ])]
-    public async Task<IActionResult> ChangePicturePost(
-        Guid id,
-        [FromForm] PostPictureRequest request
-    )
-    {
-        var user = _jwtHelper.GetAccountInfo();
-
-        var post = await _service.GetByIdAsync(id);
-        if (post == null || post.AccountId != user.Id)
-        {
-            return ApiResponse.NotFound(_lang.Get("NoPost"));
-        }
-
-        var res = await _service.UploadPostPicturesAsync(id, request.Pictures);
-
-        return ApiResponse.Success(res);
     }
 }

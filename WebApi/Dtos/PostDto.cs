@@ -58,6 +58,7 @@ public class GetPostDetailResponse
 public class CreatePostRequest
 {
     public string Content { get; set; } = null!;
+    public List<IFormFile> Pictures { get; set; } = [];
 }
 
 public class CreatePostResponse
@@ -71,6 +72,8 @@ public class CreatePostResponse
 public class UpdatePostRequest
 {
     public string Content { get; set; } = null!;
+    public List<IFormFile> Pictures { get; set; } = [];
+    public bool ClearPictures { get; set; } = false;
 }
 
 public class UpdatePostResponse
@@ -78,6 +81,7 @@ public class UpdatePostResponse
     public Guid Id { get; set; }
     public string Link { get; set; } = null!;
     public string Content { get; set; } = null!;
+    public List<IFormFile> Pictures { get; set; } = [];
     public DateTime UpdatedAt { get; set; }
 }
 

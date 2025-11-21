@@ -143,8 +143,14 @@ public class PostService : IPostService
         return post;
     }
 
-    public async Task LikePostAsync(Guid postId, Guid accountId)
+    public async Task<bool> LikePostAsync(Guid postId, Guid accountId)
     {
+        var existingPost = await _unitOfWork.Posts.GetByIdAsync(postId);
+        if (existingPost == null)
+        {
+            return false;
+        }
+
         var existingLike = await _unitOfWork.PostLikes.GetByAccountAndPostAsync(accountId, postId);
 
         if (existingLike == null)
@@ -159,10 +165,17 @@ public class PostService : IPostService
             );
             await _unitOfWork.SaveChangesAsync();
         }
+        return true;
     }
 
-    public async Task CancelLikePostAsync(Guid postId, Guid accountId)
+    public async Task<bool> CancelLikePostAsync(Guid postId, Guid accountId)
     {
+        var existingPost = await _unitOfWork.Posts.GetByIdAsync(postId);
+        if (existingPost == null)
+        {
+            return false;
+        }
+
         var existingLike = await _unitOfWork.PostLikes.GetByAccountAndPostAsync(accountId, postId);
 
         if (existingLike != null)
@@ -170,15 +183,23 @@ public class PostService : IPostService
             _unitOfWork.PostLikes.Remove(existingLike);
             await _unitOfWork.SaveChangesAsync();
         }
+
+        return true;
     }
 
-    public async Task<List<GetCommentsResponse>> GetPostCommentsList(
+    public async Task<List<GetCommentsResponse>?> GetPostCommentsList(
         Guid postId,
         DateTime? cursor,
         Guid accountId,
         int pageSize
     )
     {
+        var existingPost = await _unitOfWork.Posts.GetByIdAsync(postId);
+        if (existingPost == null || existingPost.AccountId != accountId)
+        {
+            return null;
+        }
+
         var comments = await _unitOfWork
             .Comments.GetQuery()
             .Where(c =>
@@ -215,6 +236,14 @@ public class PostService : IPostService
             link = StringHelper.GenerateRandomString(_settings.TokenLength);
         } while (await _unitOfWork.Posts.GetByLinkAsync(link) != null);
 
+        var pictureLinks = new List<ImageDto>();
+
+        foreach (var picture in request.Pictures)
+        {
+            var pictureLink = await _cloudinaryHelper.Upload(picture);
+            pictureLinks.Add(pictureLink);
+        }
+
         var createTime = DateTime.UtcNow;
         var newPost = new Post
         {
@@ -226,6 +255,16 @@ public class PostService : IPostService
         };
 
         _unitOfWork.Posts.Add(newPost);
+
+        var postPictures = pictureLinks.Select(pl => new Picture
+        {
+            Id = Guid.NewGuid(),
+            PostId = newPost.Id,
+            PublicId = pl.PublicId,
+            Link = pl.Link,
+        });
+        _unitOfWork.Pictures.AddRange(postPictures);
+
         await _unitOfWork.SaveChangesAsync();
 
         return new CreatePostResponse
@@ -249,6 +288,28 @@ public class PostService : IPostService
             return null;
         }
 
+        var pictureLinks = new List<ImageDto>();
+
+        if (request.ClearPictures)
+        {
+            var existingPictures = await _unitOfWork.Pictures.GetByPostIdAsync(postId);
+
+            await _cloudinaryHelper.DeleteImages(existingPictures.Select(x => x.PublicId).ToList());
+            _unitOfWork.Pictures.RemoveRange(existingPictures);
+
+            pictureLinks = await _cloudinaryHelper.UploadImages(request.Pictures);
+
+            _unitOfWork.Pictures.AddRange(
+                pictureLinks.Select(pl => new Picture
+                {
+                    Id = Guid.NewGuid(),
+                    PostId = existingPost.Id,
+                    PublicId = pl.PublicId,
+                    Link = pl.Link,
+                })
+            );
+        }
+
         var updateTime = DateTime.UtcNow;
 
         existingPost.Content = request.Content;
@@ -270,16 +331,16 @@ public class PostService : IPostService
         var existingPost = await _unitOfWork.Posts.GetByIdAsync(postId);
 
         if (existingPost == null || existingPost.AccountId != accountId)
+        {
             return false;
+        }
 
         existingPost.DeletedAt = DateTime.UtcNow;
 
         var existingPictures = await _unitOfWork.Pictures.GetByPostIdAsync(postId);
-        foreach (var existingPicture in existingPictures)
-        {
-            await _cloudinaryHelper.Delete(existingPicture.PublicId);
-            _unitOfWork.Pictures.Remove(existingPicture);
-        }
+
+        await _cloudinaryHelper.DeleteImages(existingPictures.Select(x => x.PublicId).ToList());
+        _unitOfWork.Pictures.RemoveRange(existingPictures);
 
         await _unitOfWork.SaveChangesAsync();
 

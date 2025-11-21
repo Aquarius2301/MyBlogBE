@@ -54,8 +54,9 @@ public interface IPostService
     /// <param name="postId">The ID of the post to like.</param>
     /// <param name="accountId">The ID of the user performing the like.</param>
     /// <returns>
+    /// true if the like was successfully added; otherwise, false.
     /// </returns>
-    Task LikePostAsync(Guid postId, Guid accountId);
+    Task<bool> LikePostAsync(Guid postId, Guid accountId);
 
     /// <summary>
     /// Cancels (removes) a like from a post.
@@ -63,8 +64,9 @@ public interface IPostService
     /// <param name="postId">The ID of the post to unlike.</param>
     /// <param name="accountId">The ID of the user performing the action.</param>
     /// <returns>
+    /// true if the like was successfully removed; otherwise, false.
     /// </returns>
-    Task CancelLikePostAsync(Guid postId, Guid accountId);
+    Task<bool> CancelLikePostAsync(Guid postId, Guid accountId);
 
     /// <summary>
     /// Gets a paginated list of top-level comments for a post.
@@ -77,7 +79,7 @@ public interface IPostService
     /// A list of <see cref="GetCommentsResponse"/> objects representing comments for the post.
     /// Returns null if the post does not exist.
     /// </returns>
-    Task<List<GetCommentsResponse>> GetPostCommentsList(
+    Task<List<GetCommentsResponse>?> GetPostCommentsList(
         Guid postId,
         DateTime? cursor,
         Guid accountId,
@@ -92,12 +94,29 @@ public interface IPostService
     /// <returns>A <see cref="CreatePostResponse" objects representing created post></returns>
     Task<CreatePostResponse> AddPostAsync(CreatePostRequest request, Guid accountId);
 
+    /// <summary>
+    /// Updates an existing post.
+    /// </summary>
+    /// <param name="request">The post update request containing updated post details.</param>
+    /// <param name="postId">The ID of the post to update.</param>
+    /// <param name="accountId">The ID of the account updating the post.</param
+    /// <returns>
+    /// An updated <see cref="UpdatePostResponse"/> if the update is successful; otherwise, null.
+    /// </returns>
     Task<UpdatePostResponse?> UpdatePostAsync(
         UpdatePostRequest request,
         Guid postId,
         Guid accountId
     );
 
+    /// <summary>
+    /// Deletes a post.
+    /// </summary>
+    /// <param name="postId">The ID of the post to delete.</param>
+    /// <param name="accountId">The ID of the account requesting the deletion.</param
+    /// <returns>
+    /// true if the post was successfully deleted; otherwise, false.
+    /// </returns>
     Task<bool> DeletePostAsync(Guid postId, Guid accountId);
     Task<List<ImageDto>> AddPostPicturesAsync(Guid postId, List<IFormFile> pictures);
 
