@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebApi.Dtos;
@@ -41,6 +42,7 @@ public class PostController : ControllerBase
 
         var res = await _service.GetPostsListAsync(request.Cursor, user.Id, request.PageSize);
 
+        Console.WriteLine(res.Count());
         return ApiResponse.Success(
             new PaginationResponse
             {
@@ -201,7 +203,7 @@ public class PostController : ControllerBase
     /// </returns>
     [HttpPost("")]
     [CheckStatusHelper(BusinessObject.Enums.StatusType.Active)]
-    public async Task<IActionResult> AddPost([FromBody] CreatePostRequest request)
+    public async Task<IActionResult> AddPost([FromForm] CreatePostRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Content))
         {
@@ -220,7 +222,7 @@ public class PostController : ControllerBase
         BusinessObject.Enums.StatusType.Active,
         BusinessObject.Enums.StatusType.Suspended,
     ])]
-    public async Task<IActionResult> UpdatePost(Guid id, [FromBody] UpdatePostRequest request)
+    public async Task<IActionResult> UpdatePost(Guid id, [FromForm] UpdatePostRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Content))
         {

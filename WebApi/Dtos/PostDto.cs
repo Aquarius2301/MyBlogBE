@@ -66,6 +66,7 @@ public class CreatePostResponse
     public Guid Id { get; set; }
     public string Link { get; set; } = null!;
     public string Content { get; set; } = null!;
+    public List<string> Pictures { get; set; } = [];
     public DateTime CreatedAt { get; set; }
 }
 
@@ -81,7 +82,7 @@ public class UpdatePostResponse
     public Guid Id { get; set; }
     public string Link { get; set; } = null!;
     public string Content { get; set; } = null!;
-    public List<IFormFile> Pictures { get; set; } = [];
+    public List<string> Pictures { get; set; } = [];
     public DateTime UpdatedAt { get; set; }
 }
 

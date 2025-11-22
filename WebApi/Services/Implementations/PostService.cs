@@ -272,6 +272,7 @@ public class PostService : IPostService
             Id = newPost.Id,
             Link = newPost.Link,
             Content = newPost.Content,
+            Pictures = postPictures.Select(pp => pp.Link).ToList(),
             CreatedAt = createTime,
         };
     }
@@ -282,8 +283,13 @@ public class PostService : IPostService
         Guid accountId
     )
     {
-        var existingPost = await _unitOfWork.Posts.GetByIdAsync(postId);
-        if (existingPost == null || existingPost.AccountId != accountId)
+        var existingPost = await _unitOfWork
+            .Posts.GetQuery()
+            .Include(p => p.Pictures)
+            .FirstOrDefaultAsync(p =>
+                p.Id == postId && p.AccountId == accountId && p.DeletedAt == null
+            );
+        if (existingPost == null)
         {
             return null;
         }
@@ -321,7 +327,8 @@ public class PostService : IPostService
         {
             Id = existingPost.Id,
             Link = existingPost.Link,
-            Content = existingPost.Content,
+            Content = request.Content,
+            Pictures = existingPost.Pictures.Select(x => x.Link).ToList(),
             UpdatedAt = updateTime,
         };
     }
@@ -345,68 +352,5 @@ public class PostService : IPostService
         await _unitOfWork.SaveChangesAsync();
 
         return true;
-    }
-
-    public async Task<List<ImageDto>> AddPostPicturesAsync(Guid postId, List<IFormFile> pictures)
-    {
-        var pictureLinks = new List<ImageDto>();
-
-        foreach (var picture in pictures)
-        {
-            var pictureLink = await _cloudinaryHelper.Upload(picture);
-
-            pictureLinks.Add(
-                new ImageDto { PublicId = pictureLink.PublicId, Link = pictureLink.Link }
-            );
-
-            var postPicture = new Picture
-            {
-                Id = Guid.NewGuid(),
-                PostId = postId,
-                PublicId = pictureLink.PublicId,
-                Link = pictureLink.Link,
-            };
-
-            _unitOfWork.Pictures.Add(postPicture);
-        }
-
-        await _unitOfWork.SaveChangesAsync();
-
-        return pictureLinks;
-    }
-
-    public async Task<List<ImageDto>> UploadPostPicturesAsync(Guid postId, List<IFormFile> pictures)
-    {
-        var existingPictures = await _unitOfWork.Pictures.GetByPostIdAsync(postId);
-        var pictureLinks = new List<ImageDto>();
-
-        foreach (var existingPicture in existingPictures)
-        {
-            await _cloudinaryHelper.Delete(existingPicture.PublicId);
-            _unitOfWork.Pictures.Remove(existingPicture);
-        }
-
-        foreach (var picture in pictures)
-        {
-            var pictureLink = await _cloudinaryHelper.Upload(picture);
-
-            pictureLinks.Add(
-                new ImageDto { PublicId = pictureLink.PublicId, Link = pictureLink.Link }
-            );
-
-            var postPicture = new Picture
-            {
-                Id = Guid.NewGuid(),
-                PostId = postId,
-                PublicId = pictureLink.PublicId,
-                Link = pictureLink.Link,
-            };
-
-            _unitOfWork.Pictures.Add(postPicture);
-        }
-
-        await _unitOfWork.SaveChangesAsync();
-
-        return pictureLinks;
     }
 }

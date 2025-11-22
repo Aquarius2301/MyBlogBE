@@ -16,6 +16,7 @@ public class AccountCleanupHelper : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly TimeSpan _interval = TimeSpan.FromMinutes(60);
+    private readonly BackgroundTaskLogger _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AccountCleanupHelper"/> class.
@@ -26,6 +27,7 @@ public class AccountCleanupHelper : BackgroundService
     public AccountCleanupHelper(IServiceProvider serviceProvider)
     {
         _serviceProvider = serviceProvider;
+        _logger = new BackgroundTaskLogger();
     }
 
     /// <summary>
@@ -36,10 +38,29 @@ public class AccountCleanupHelper : BackgroundService
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            await CleanupExpiredAccountsAsync();
-            await SelfRemoveAccountsAsync();
+            await BackgroundAsync(CleanupExpiredAccountsAsync(), "CleanupExpiredAccountsAsync");
+            await BackgroundAsync(SelfRemoveAccountsAsync(), "SelfRemoveAccountsAsync");
+
             await Task.Delay(_interval, stoppingToken);
         }
+    }
+
+    private async Task BackgroundAsync(Task<int> task, string taskName)
+    {
+        var startTime = DateTime.Now;
+        var traceId = Guid.NewGuid().ToString();
+
+        await _logger.LogTaskStart(taskName, traceId);
+
+        var res = await task;
+
+        var duration = DateTime.Now - startTime;
+        await _logger.LogTaskComplete(
+            taskName,
+            traceId,
+            $"[Cleanup] Completed {res} items.",
+            duration
+        );
     }
 
     /// <summary>
@@ -50,7 +71,7 @@ public class AccountCleanupHelper : BackgroundService
     /// Accounts that meet the criteria are permanently deleted from the database.
     /// Logs the number of deleted accounts to the console.
     /// </remarks>
-    private async Task CleanupExpiredAccountsAsync()
+    private async Task<int> CleanupExpiredAccountsAsync()
     {
         using var scope = _serviceProvider.CreateScope();
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
@@ -65,11 +86,9 @@ public class AccountCleanupHelper : BackgroundService
         {
             unitOfWork.Accounts.RemoveRange(expiredAccounts);
             await unitOfWork.SaveChangesAsync();
-
-            Console.WriteLine(
-                $"[Cleanup] Deleted {expiredAccounts.Count} expired unverified accounts at {now}."
-            );
         }
+
+        return expiredAccounts.Count;
     }
 
     /// <summary>
@@ -81,7 +100,7 @@ public class AccountCleanupHelper : BackgroundService
     /// Clears <c>SelfRemoveTime</c> after processing.
     /// Logs the number of accounts soft-deleted to the console.
     /// </remarks>
-    private async Task SelfRemoveAccountsAsync()
+    private async Task<int> SelfRemoveAccountsAsync()
     {
         using var scope = _serviceProvider.CreateScope();
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
@@ -102,9 +121,8 @@ public class AccountCleanupHelper : BackgroundService
 
                 await unitOfWork.SaveChangesAsync();
             }
-            Console.WriteLine(
-                $"[Cleanup] Soft-deleted {expiredAccounts.Count} accounts scheduled for self-removal at {now}."
-            );
         }
+
+        return expiredAccounts.Count;
     }
 }
