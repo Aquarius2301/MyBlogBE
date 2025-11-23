@@ -1,5 +1,6 @@
 using System;
 using WebApi.Dtos;
+using WebApi.Loggers;
 
 namespace WebApi.Middlewares;
 
@@ -17,9 +18,9 @@ public class AppException : Exception
 public class ExceptionMiddleware
 {
     private readonly RequestDelegate _next;
-    private readonly ILogger<ExceptionMiddleware> _logger;
+    private readonly MyBlogLogger _logger;
 
-    public ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger)
+    public ExceptionMiddleware(RequestDelegate next, MyBlogLogger logger)
     {
         _next = next;
         _logger = logger;
@@ -33,6 +34,8 @@ public class ExceptionMiddleware
         }
         catch (AppException ex)
         {
+            await _logger.LogWarning("AppException", ex);
+
             context.Response.StatusCode = ex.StatusCode;
             context.Response.ContentType = "application/json";
 
@@ -42,7 +45,7 @@ public class ExceptionMiddleware
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unhandled exception");
+            await _logger.LogError("Unhandled exception", ex);
 
             context.Response.StatusCode = 500;
             context.Response.ContentType = "application/json";

@@ -1,6 +1,7 @@
 using BusinessObject.Enums;
 using DataAccess.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
+using WebApi.Loggers;
 
 namespace WebApi.Helpers;
 
@@ -16,7 +17,7 @@ public class AccountCleanupHelper : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly TimeSpan _interval = TimeSpan.FromMinutes(60);
-    private readonly BackgroundTaskLogger _logger;
+    private MyBlogLogger _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AccountCleanupHelper"/> class.
@@ -27,7 +28,7 @@ public class AccountCleanupHelper : BackgroundService
     public AccountCleanupHelper(IServiceProvider serviceProvider)
     {
         _serviceProvider = serviceProvider;
-        _logger = new BackgroundTaskLogger();
+        _logger = new MyBlogLogger("background.log");
     }
 
     /// <summary>
@@ -38,8 +39,10 @@ public class AccountCleanupHelper : BackgroundService
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            await BackgroundAsync(CleanupExpiredAccountsAsync(), "CleanupExpiredAccountsAsync");
-            await BackgroundAsync(SelfRemoveAccountsAsync(), "SelfRemoveAccountsAsync");
+            await Task.WhenAll([
+                BackgroundAsync(CleanupExpiredAccountsAsync(), "CleanupExpiredAccountsAsync"),
+                BackgroundAsync(SelfRemoveAccountsAsync(), "SelfRemoveAccountsAsync"),
+            ]);
 
             await Task.Delay(_interval, stoppingToken);
         }
@@ -48,18 +51,12 @@ public class AccountCleanupHelper : BackgroundService
     private async Task BackgroundAsync(Task<int> task, string taskName)
     {
         var startTime = DateTime.Now;
-        var traceId = Guid.NewGuid().ToString();
-
-        await _logger.LogTaskStart(taskName, traceId);
 
         var res = await task;
 
-        var duration = DateTime.Now - startTime;
-        await _logger.LogTaskComplete(
+        await _logger.LogInfo(
             taskName,
-            traceId,
-            $"[Cleanup] Completed {res} items.",
-            duration
+            new { duration = DateTime.Now - startTime, message = $"Cleanup completed {res} items." }
         );
     }
 

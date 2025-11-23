@@ -236,13 +236,7 @@ public class PostService : IPostService
             link = StringHelper.GenerateRandomString(_settings.TokenLength);
         } while (await _unitOfWork.Posts.GetByLinkAsync(link) != null);
 
-        var pictureLinks = new List<ImageDto>();
-
-        foreach (var picture in request.Pictures)
-        {
-            var pictureLink = await _cloudinaryHelper.Upload(picture);
-            pictureLinks.Add(pictureLink);
-        }
+        var pictureLinks = await _cloudinaryHelper.UploadImages(request.Pictures);
 
         var createTime = DateTime.UtcNow;
         var newPost = new Post
