@@ -5,21 +5,23 @@ namespace WebApi.Middlewares;
 public class ApiLoggingMiddleware
 {
     private readonly RequestDelegate _next;
-    private readonly ApiLogger _logger;
+    private readonly IServiceScopeFactory _scopeFactory;
 
-    public ApiLoggingMiddleware(RequestDelegate next, ApiLogger logger)
+    public ApiLoggingMiddleware(RequestDelegate next, IServiceScopeFactory scopeFactory)
     {
         _next = next;
-        Directory.CreateDirectory("Logs");
-        _logger = logger;
+        _scopeFactory = scopeFactory;
     }
 
     public async Task InvokeAsync(HttpContext context)
     {
+        using var scope = _scopeFactory.CreateScope();
+        var logger = scope.ServiceProvider.GetRequiredService<ApiLogger>();
+
         // Enable buffering so we can read the request body multiple times
         context.Request.EnableBuffering();
 
-        await LogRequest(context);
+        await LogRequest(context, logger);
 
         // Capture the original response body stream
         var originalResponseBody = context.Response.Body;
@@ -35,14 +37,14 @@ public class ApiLoggingMiddleware
         }
 
         // Log the response
-        await LogResponse(context, responseBody);
+        await LogResponse(context, responseBody, logger);
 
         // Copy the response back to the original stream
         responseBody.Seek(0, SeekOrigin.Begin);
         await responseBody.CopyToAsync(originalResponseBody);
     }
 
-    private async Task LogRequest(HttpContext context)
+    private async Task LogRequest(HttpContext context, ApiLogger logger)
     {
         var method = context.Request.Method;
         var path = context.Request.Path;
@@ -97,10 +99,10 @@ public class ApiLoggingMiddleware
             context.Request.Body.Position = 0; // Reset for next middleware
         }
 
-        await _logger.LogRequest(method, path + query, contentType, bodyContent);
+        await logger.LogRequest(method, path + query, contentType, bodyContent);
     }
 
-    private async Task LogResponse(HttpContext context, MemoryStream responseBody)
+    private async Task LogResponse(HttpContext context, MemoryStream responseBody, ApiLogger logger)
     {
         var statusCode = context.Response.StatusCode;
 
@@ -109,6 +111,6 @@ public class ApiLoggingMiddleware
         var responseContent = await new StreamReader(responseBody).ReadToEndAsync();
         responseBody.Seek(0, SeekOrigin.Begin);
 
-        await _logger.LogResponse(statusCode, responseContent);
+        await logger.LogResponse(statusCode, responseContent);
     }
 }
