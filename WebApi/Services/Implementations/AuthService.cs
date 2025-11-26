@@ -76,7 +76,7 @@ public class AuthService : IAuthService
             if (account.RefreshTokenExpiryTime >= DateTime.UtcNow)
             {
                 account.AccessToken = _jwtHelper.GenerateAccessToken(account);
-                account.RefreshToken = _jwtHelper.GenerateRefreshToken();
+                // account.RefreshToken = _jwtHelper.GenerateRefreshToken();
 
                 await _unitOfWork.SaveChangesAsync();
 

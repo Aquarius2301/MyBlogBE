@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using WebApi.Dtos;
 using WebApi.Helpers;
 using WebApi.Services;
+using WebApi.Settings;
 
 namespace WebApi.Controller;
 
@@ -12,12 +14,19 @@ public class AuthController : ControllerBase
 {
     private readonly IAuthService _service;
     private readonly ILanguageService _lang;
+    private readonly JwtSettings _settings;
     private readonly JwtHelper _jwtHelper;
 
-    public AuthController(IAuthService service, ILanguageService lang, JwtHelper jwtHelper)
+    public AuthController(
+        IAuthService service,
+        ILanguageService lang,
+        IOptions<JwtSettings> settings,
+        JwtHelper jwtHelper
+    )
     {
         _service = service;
         _lang = lang;
+        _settings = settings.Value;
         _jwtHelper = jwtHelper;
     }
 
@@ -57,9 +66,25 @@ public class AuthController : ControllerBase
                 request.Password
             );
 
-            return authResponse != null
-                ? ApiResponse.Success(authResponse)
-                : ApiResponse.Unauthorized(_lang.Get("LoginFailed"));
+            // Save cookie on server
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Expires = DateTime.UtcNow.AddDays(_settings.RefreshTokenDurationDays),
+                Secure = true,
+                SameSite = SameSiteMode.Lax,
+            };
+
+            if (authResponse != null)
+            {
+                Response.Cookies.Append("refreshToken", authResponse.RefreshToken, cookieOptions);
+                return ApiResponse.Success(authResponse);
+            }
+            return ApiResponse.Unauthorized(_lang.Get("LoginFailed"));
+
+            // return authResponse != null
+            //     ? ApiResponse.Success(authResponse)
+            //     : ApiResponse.Unauthorized(_lang.Get("LoginFailed"));
         }
         catch (Exception ex)
         {
@@ -172,13 +197,19 @@ public class AuthController : ControllerBase
     /// 500 - Returns error message if exception occurs.
     /// </returns>
     [HttpPost("refresh")]
-    [CheckStatusHelper([
-        BusinessObject.Enums.StatusType.Active,
-        BusinessObject.Enums.StatusType.Suspended,
-    ])]
-    public async Task<IActionResult> Refresh([FromBody] RefreshRequest request)
+    // [CheckStatusHelper([
+    //     BusinessObject.Enums.StatusType.Active,
+    //     BusinessObject.Enums.StatusType.Suspended,
+    // ])]
+    public async Task<IActionResult> Refresh()
     {
-        var authResponse = await _service.GetRefreshTokenAsync(request.Token);
+        var refreshToken = Request.Cookies["refreshToken"];
+
+        if (string.IsNullOrWhiteSpace(refreshToken))
+        {
+            return ApiResponse.Unauthorized(_lang.Get("InvalidToken"));
+        }
+        var authResponse = await _service.GetRefreshTokenAsync(refreshToken);
 
         return authResponse != null
             ? ApiResponse.Success(authResponse)

@@ -91,6 +91,7 @@ builder
             IssuerSigningKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(jwtSettings["Key"]!)
             ),
+            //ClockSkew = TimeSpan.Zero, // remove delay of token when expire
         };
         options.Events = new JwtBearerEvents
         {
@@ -159,13 +160,28 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<IPostService, PostService>();
 
+// builder.Services.AddCors(options =>
+// {
+//     options.AddPolicy(
+//         "AllowAll",
+//         builder =>
+//         {
+//             builder.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+//         }
+//     );
+// });
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(
-        "AllowAll",
-        builder =>
+        name: "_myAllowSpecificOrigins",
+        policy =>
         {
-            builder.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+            policy
+                .WithOrigins("http://localhost:5173")
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials(); // <-- QUAN TRỌNG: Cho phép gửi Cookie
         }
     );
 });
@@ -193,8 +209,9 @@ app.UseForwardedHeaders(
         ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
     }
 );
+app.UseRouting();
 
-app.UseCors("AllowAll");
+app.UseCors("_myAllowSpecificOrigins");
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

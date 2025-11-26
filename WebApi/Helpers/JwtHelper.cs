@@ -20,15 +20,15 @@ public class JwtHelper
 
     private readonly JwtSettings _settings;
 
-    /// <summary>
-    /// Gets the configured access token duration in minutes.
-    /// </summary>
-    public int AccessTokenDurationMinutes => _settings.AccessTokenDurationMinutes;
+    // /// <summary>
+    // /// Gets the configured access token duration in minutes.
+    // /// </summary>
+    // public int AccessTokenDurationMinutes => _settings.AccessTokenDurationMinutes;
 
-    /// <summary>
-    /// Gets the configured refresh token duration in days.
-    /// </summary>
-    public int RefreshTokenDurationDays => _settings.RefreshTokenDurationDays;
+    // /// <summary>
+    // /// Gets the configured refresh token duration in days.
+    // /// </summary>
+    // public int RefreshTokenDurationDays => _settings.RefreshTokenDurationDays;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="JwtHelper"/> class.
@@ -66,7 +66,7 @@ public class JwtHelper
             issuer: _settings.Issuer,
             audience: _settings.Audience,
             claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(_settings.AccessTokenDurationMinutes),
+            expires: DateTime.UtcNow.AddMinutes(_settings.AccessTokenDurationMinutes), //test
             signingCredentials: creds
         );
 

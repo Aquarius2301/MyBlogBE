@@ -9,7 +9,7 @@ using WebApi.Settings;
 namespace WebApi.Controllers;
 
 [Authorize]
-[Route("api/account")]
+[Route("api/accounts")]
 [ApiController]
 [CheckStatusHelper([
     BusinessObject.Enums.StatusType.Active,
