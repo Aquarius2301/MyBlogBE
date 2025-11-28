@@ -126,103 +126,37 @@
         <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0,
             Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
     </resheader>
+    <data name="Welcome" xml:space="preserve">
+        <value>Welcome to MyBlog</value>
+    </data>
+    <data name="LoginToContinue" xml:space="preserve">
+        <value>Login to continue</value>
+    </data>
+    <data name="Username" xml:space="preserve">
+        <value>Username</value>
+    </data>
+    <data name="Password" xml:space="preserve">
+        <value>Password</value>
+    </data>
+    <data name="Login" xml:space="preserve">
+        <value>Login</value>
+    </data>
+    <data name="Register1" xml:space="preserve">
+        <value>Does not have an account?</value>
+    </data>
+    <data name="Register2" xml:space="preserve">
+        <value>Register here!</value>
+    </data>
+    <data name="ForgotPassword1" xml:space="preserve">
+        <value>You have an account but forgot your password?</value>
+    </data>
+    <data name="ForgotPassword2" xml:space="preserve">
+        <value>Reset it here!</value>
+    </data>
+    <data name="LoginSuccess" xml:space="preserve">
+        <value>Login successful!</value>
+    </data>
     <data name="LoginFailed" xml:space="preserve">
-        <value>The username or password is incorrect</value>
-    </data>
-    <data name="UsernameEmpty" xml:space="preserve">
-        <value>Username cannot be empty</value>
-        </data>
-    <data name="PasswordEmpty" xml:space="preserve">
-        <value>Password cannot be empty</value>
-    </data>
-    <data name="UsernameRegister" xml:space="preserve">
-        <value>Username must be letters or numbers and between 3 and 20 characters</value>
-    </data>
-    <data name="DisplaynameRegister" xml:space="preserve">
-        <value>Display name must be between 3 and 50 characters</value>
-    </data>
-    <data name="PasswordRegister" xml:space="preserve">
-        <value>Password must be at least 8 characters and include uppercase, lowercase, numbers, and special characters</value>
-    </data>
-    <data name="EmailRegister" xml:space="preserve">
-        <value>Invalid email</value>
-    </data>
-    <data name="DobRegister" xml:space="preserve">
-        <value>User must be at least 13 years old</value>
-    </data>
-    <data name="UsernameExist" xml:space="preserve">
-        <value>Username already exists</value>
-    </data>
-    <data name="EmailExist" xml:space="preserve">
-        <value>Email already exists</value>
-    </data>
-    <data name="RegisterSuccess" xml:space="preserve">
-        <value>Registration successful. Please check your email to confirm your account</value>
-    </data>
-    <data name="RegisterFailed" xml:space="preserve">
-        <value>Registation unsuccessful.</value>
-    </data>
-    <data name="ForgotPassword" xml:space="preserve">
-        <value>Please check your email to confirm your account</value>
-    </data>
-    <data name="EmailConfirmed" xml:space="preserve">
-        <value>Email confirmed successfully</value>
-    </data>
-    <data name="InvalidToken" xml:space="preserve">
-        <value>The confirmation token is invalid or has expired</value>
-    </data>
-    <data name="TypeError" xml:space="preserve">
-        <value>Type must be 'register' or 'forgotPassword'</value>
-    </data>
-    <data name="NoAccount" xml:space="preserve">
-        <value>Account not found</value>
-    </data>
-    <data name="TokenEmpty" xml:space="preserve">
-        <value>Confirmation token is required</value>
-    </data>
-    <data name="PasswordChanged" xml:space="preserve">
-        <value>Password changed successfully</value>
-    </data>
-    <data name="LoggedOut" xml:space="preserve">
-        <value>Logged out successfully</value>
-    </data>
-    <data name="NoPost" xml:space="preserve">
-        <value>Post not found</value>
-    </data>
-    <data name="PostCreated" xml:space="preserve">
-        <value>Upload post successfully</value>
-    </data>
-    <data name="PostUpdated" xml:space="preserve">
-        <value>Update post successfully</value>
-    </data>
-    <data name="PostDeleted" xml:space="preserve">
-        <value>Delete post successfully</value>
-    </data>
-    <data name="InactiveAccountCannotCreatePost" xml:space="preserve">
-        <value>This account is not allowed to post</value>
-    </data>
-    <data name="InactiveAccountCannotUpdatePost" xml:space="preserve">
-        <value>This account is not allowed to update posts</value>
-    </data>
-    <data name="InactiveAccountCannotDeletePost" xml:space="preserve">
-        <value>This account is not allowed to delete posts</value>
-    </data>
-    <data name="PostEmpty" xml:space="preserve">
-        <value>The post content cannot be empty</value>
-    </data>
-    <data name="NoComment" xml:space="preserve">
-        <value>Comment not found</value>
-    </data>
-    <data name="NewPasswordMustBeDifferent" xml:space="preserve">
-        <value>New password must be different from old password</value>
-    </data>
-    <data name="OldPasswordIncorrect" xml:space="preserve">
-        <value>Old password is incorrect</value>
-    </data>
-    <data name="SelfRemoveAccount1" xml:space="preserve">
-        <value>Account scheduled for removal in</value>
-    </data>
-    <data name="SelfRemoveAccount2" xml:space="preserve">
-        <value> days</value>
+        <value>Login failed. Please check your username and password.</value>
     </data>
 </root>

@@ -78,7 +78,7 @@ public class AuthController : ControllerBase
             if (authResponse != null)
             {
                 Response.Cookies.Append("refreshToken", authResponse.RefreshToken, cookieOptions);
-                return ApiResponse.Success(authResponse);
+                return ApiResponse.Success(authResponse, _lang.Get("LoginSuccess"));
             }
             return ApiResponse.Unauthorized(_lang.Get("LoginFailed"));
 

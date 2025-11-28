@@ -19,5 +19,15 @@ namespace WebApi.Services.Implementations
 
             return localizedString.Value;
         }
+
+        public IDictionary<string, string> GetArray(string[] keys)
+        {
+            var result = new Dictionary<string, string>();
+            foreach (var key in keys)
+            {
+                result[key] = Get(key);
+            }
+            return result;
+        }
     }
 }
