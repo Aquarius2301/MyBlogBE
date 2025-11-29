@@ -33,10 +33,13 @@
     <data name="InvalidToken" xml:space="preserve">
         <value>リンクが無効であるか、有効期限が切れています。</value>
     </data>
-    <data name="ConfirmEmail" xml:space="preserve">
-        <value>確認メールを送信しました。メールを確認してください。</value>
-    </data>
     <data name="ConfirmSuccessful" xml:space="preserve">
         <value>確認が成功しました。これでアカウントにログインできます。</value>
+    </data>
+    <data name="ForgotPasswordConfirmSuccessful" xml:space="preserve">
+        <value>確認が成功しました。今すぐパスワードを変更してください。</value>
+    </data>
+    <data name="PasswordChanged" xml:space="preserve">
+        <value>パスワードが変更されました。</value>
     </data>
 </root>

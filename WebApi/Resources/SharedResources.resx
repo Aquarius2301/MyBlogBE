@@ -161,10 +161,13 @@
     <data name="InvalidToken" xml:space="preserve">
         <value>The confirmation link is invalid or has expired.</value>
     </data>
-    <data name="ConfirmEmail" xml:space="preserve">
-        <value>Confirmation email has been sent. Please check your email.</value>
-    </data>
     <data name="ConfirmSuccessful" xml:space="preserve">
         <value>Confirm successful. Now, you login to your account.</value>
+    </data>
+    <data name="ForgotPasswordConfirmSuccessful" xml:space="preserve">
+        <value>Confirm successful. Now, change your password.</value>
+    </data>
+    <data name="PasswordChanged" xml:space="preserve">
+        <value>Password has been changed.</value>
     </data>
 </root>

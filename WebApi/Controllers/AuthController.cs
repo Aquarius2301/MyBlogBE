@@ -182,7 +182,7 @@ public class AuthController : ControllerBase
             var res = await _service.ConfirmForgotPasswordAccountAsync(token);
 
             return !string.IsNullOrEmpty(res)
-                ? ApiResponse.Success(res)
+                ? ApiResponse.Success(res, _lang.Get("ForgotPasswordConfirmSuccessful"))
                 : ApiResponse.BadRequest(_lang.Get("InvalidToken"));
         }
     }
@@ -226,16 +226,16 @@ public class AuthController : ControllerBase
     /// 500 -  Returns error message if exception occurs.
     /// </returns>
     [HttpPost("forgot-password")]
-    [CheckStatusHelper([
-        BusinessObject.Enums.StatusType.Active,
-        BusinessObject.Enums.StatusType.Suspended,
-    ])]
+    // [CheckStatusHelper([
+    //     BusinessObject.Enums.StatusType.Active,
+    //     BusinessObject.Enums.StatusType.Suspended,
+    // ])]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordResponse request)
     {
         var res = await _service.ForgotPasswordAsync(request.Identifier);
 
         return res
-            ? ApiResponse.Success(_lang.Get("ForgotPassword"))
+            ? ApiResponse.Success(res, _lang.Get("ConfirmEmail"))
             : ApiResponse.BadRequest(_lang.Get("NoAccount"));
     }
 
@@ -249,10 +249,6 @@ public class AuthController : ControllerBase
     /// 500 - Returns error message if exception occurs.
     /// </returns>
     [HttpPost("reset-password")]
-    [CheckStatusHelper([
-        BusinessObject.Enums.StatusType.Active,
-        BusinessObject.Enums.StatusType.Suspended,
-    ])]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.ConfirmCode))
@@ -268,7 +264,7 @@ public class AuthController : ControllerBase
         var res = await _service.ResetPasswordAsync(request.ConfirmCode, request.NewPassword);
 
         return res
-            ? ApiResponse.Success(_lang.Get("PasswordChanged"))
+            ? ApiResponse.Success(res, _lang.Get("PasswordChanged"))
             : ApiResponse.BadRequest(_lang.Get("InvalidToken"));
     }
 

@@ -121,11 +121,11 @@
     </resheader>
     <resheader name="reader">
         <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0,
-    Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+            Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
     </resheader>
     <resheader name="writer">
         <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0,
-    Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+            Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
     </resheader>
     <data
         name="LoginSuccess" xml:space="preserve">
@@ -171,10 +171,13 @@
         <value>Link xác nhận không hợp lệ hoặc đã hết hạn.</value>
     </data>
     <data
-        name="ConfirmEmail" xml:space="preserve">
-        <value>Đã gửi email xác nhận. Vui lòng kiểm tra email của bạn.</value>
-    </data>
-    <data
         name="ConfirmSuccessful" xml:space="preserve">
         <value>Xác thực thành công. Bây giờ, bạn có thể đăng nhập vào tài khoản của mình.</value>
-    </data>thực </root>
+    </data>
+    <data name="ForgotPasswordConfirmSuccessful" xml:space="preserve">
+        <value>Xác nhận thành công. Bây giờ, hãy thay đổi mật khẩu của bạn.</value>
+    </data>
+    <data name="PasswordChanged" xml:space="preserve">
+        <value>Mật khẩu đã được thay đổi.</value>
+    </data>
+</root>
