@@ -49,6 +49,7 @@ public class PostService : IPostService
                 Content = x.Content,
                 AccountId = x.AccountId,
                 AccountName = x.Account.DisplayName,
+                AccountAvatar = x.Account.Picture != null ? x.Account.Picture.Link : "",
                 CreatedAt = x.CreatedAt,
                 PostPictures = x.Pictures.Select(pp => pp.Link).ToList(),
                 LatestComment = x

@@ -104,48 +104,48 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
-        var errors = new Dictionary<string, string>();
+        var errors = string.Empty;
 
         // Check validation
         if (!ValidationHelper.IsValidString(request.Username, true, 3, 20))
-            errors["Username"] = _lang.Get("UsernameRegister");
+            errors += _lang.Get("UsernameRegister") + "\n";
 
         if (!ValidationHelper.IsValidString(request.DisplayName, false, 3, 50))
-            errors["DisplayName"] = _lang.Get("DisplaynameRegister");
+            errors += _lang.Get("DisplaynameRegister") + "\n";
 
         if (!ValidationHelper.IsStrongPassword(request.Password))
-            errors["Password"] = _lang.Get("PasswordRegister");
+            errors += _lang.Get("PasswordRegister") + "\n";
 
         if (!ValidationHelper.IsValidEmail(request.Email))
-            errors["Email"] = _lang.Get("EmailRegister");
+            errors += _lang.Get("EmailRegister") + "\n";
 
         if (
             !ValidationHelper.IsValidDateOfBirth(request.DateOfBirth.ToDateTime(new TimeOnly(0, 0)))
         )
-            errors["DateOfBirth"] = _lang.Get("DobRegister");
-        if (errors.Any())
+            errors += _lang.Get("DobRegister") + "\n";
+        if (!string.IsNullOrEmpty(errors))
         {
-            return ApiResponse.BadRequest(_lang.Get("RegisterFailed"), errors);
+            return ApiResponse.BadRequest(errors.Trim());
         }
 
         // Check existence
-        if (await _service.GetByUsernameAsync(request.Username) == null)
+        if (await _service.GetByUsernameAsync(request.Username) != null)
         {
-            errors["Username"] = _lang.Get("UsernameExist");
+            errors += _lang.Get("UsernameExist") + "\n";
         }
-        if (await _service.GetByEmailAsync(request.Email) == null)
+        if (await _service.GetByEmailAsync(request.Email) != null)
         {
-            errors["Email"] = _lang.Get("EmailExist");
+            errors += _lang.Get("EmailExist") + "\n";
         }
-        if (errors.Any())
+        if (!string.IsNullOrEmpty(errors))
         {
-            return ApiResponse.BadRequest(_lang.Get("RegisterFailed"), errors);
+            return ApiResponse.BadRequest(errors.Trim());
         }
 
         // Register account if no errors
         var res = await _service.RegisterAccountAsync(request);
 
-        return ApiResponse.Success(res, _lang.Get("RegisterSuccess"));
+        return ApiResponse.Success(res, _lang.Get("ConfirmEmail"));
     }
 
     /// <summary>

@@ -7,6 +7,7 @@ public class GetPostsResponse
     public string Content { get; set; } = null!;
     public Guid AccountId { get; set; }
     public string AccountName { get; set; } = null!;
+    public string AccountAvatar { get; set; } = null!;
     public DateTime CreatedAt { get; set; }
     public List<string> PostPictures { get; set; } = null!;
     public PostLatestComment? LatestComment { get; set; } = null;

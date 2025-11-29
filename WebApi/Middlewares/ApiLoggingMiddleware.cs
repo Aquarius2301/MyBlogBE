@@ -50,6 +50,7 @@ public class ApiLoggingMiddleware
         var path = context.Request.Path;
         var query = context.Request.QueryString.HasValue ? context.Request.QueryString.Value : "";
         var contentType = context.Request.ContentType ?? "";
+        var language = context.Request.Headers["Accept-Language"].ToString();
 
         // Read the request body
         string bodyContent = "";
@@ -99,7 +100,7 @@ public class ApiLoggingMiddleware
             context.Request.Body.Position = 0; // Reset for next middleware
         }
 
-        await logger.LogRequest(method, path + query, contentType, bodyContent);
+        await logger.LogRequest(method, path + query, language, contentType, bodyContent);
     }
 
     private async Task LogResponse(HttpContext context, MemoryStream responseBody, ApiLogger logger)

@@ -19,6 +19,7 @@ public class ApiLogger : MyBlogLogger
     public async Task LogRequest(
         string method,
         string path,
+        string language,
         object? contentType = null,
         object? body = null
     )
@@ -30,6 +31,7 @@ public class ApiLogger : MyBlogLogger
         logEntry += $"Trace ID: {_traceId}\n";
         logEntry += $"Method: {method}\n";
         logEntry += $"Path: {path}\n";
+        logEntry += $"Language: {language}\n";
 
         if (contentType != null)
             logEntry += $"ContentType: {contentType}\n";

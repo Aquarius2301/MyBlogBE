@@ -7,7 +7,7 @@ namespace WebApi.Services.Implementations
     {
         private readonly IStringLocalizer _localizer;
 
-        public LanguageService(IStringLocalizerFactory factory, ILogger<LanguageService> logger)
+        public LanguageService(IStringLocalizerFactory factory)
         {
             var type = typeof(SharedResources);
             _localizer = factory.Create(type);
@@ -18,16 +18,6 @@ namespace WebApi.Services.Implementations
             var localizedString = _localizer[key];
 
             return localizedString.Value;
-        }
-
-        public IDictionary<string, string> GetArray(string[] keys)
-        {
-            var result = new Dictionary<string, string>();
-            foreach (var key in keys)
-            {
-                result[key] = Get(key);
-            }
-            return result;
         }
     }
 }

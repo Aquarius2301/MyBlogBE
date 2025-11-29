@@ -118,7 +118,12 @@ builder
     });
 builder.Services.AddLocalization(options => options.ResourcesPath = "");
 
-var supportedCultures = new[] { new CultureInfo("en"), new CultureInfo("vi") };
+var supportedCultures = new[]
+{
+    new CultureInfo("en"),
+    new CultureInfo("vi"),
+    new CultureInfo("ja"),
+};
 
 builder.Services.Configure<RequestLocalizationOptions>(options =>
 {
