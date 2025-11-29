@@ -30,12 +30,12 @@ public class AuthService : IAuthService
 
     public Task<Account?> GetByUsernameAsync(string username)
     {
-        return _unitOfWork.Accounts.GetByUsernameAsync(username);
+        return _unitOfWork.Accounts.GetByUsernameAsync(username, includeInactive: true); // Avoid create 2 accounts with same username
     }
 
     public Task<Account?> GetByEmailAsync(string email)
     {
-        return _unitOfWork.Accounts.GetByEmailAsync(email);
+        return _unitOfWork.Accounts.GetByEmailAsync(email, includeInactive: true); // Avoid create 2 accounts with same email
     }
 
     public async Task<AuthResponse?> GetAuthenticateAsync(string username, string password)

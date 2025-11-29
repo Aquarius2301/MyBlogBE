@@ -108,21 +108,21 @@ public class AuthController : ControllerBase
 
         // Check validation
         if (!ValidationHelper.IsValidString(request.Username, true, 3, 20))
-            errors += _lang.Get("UsernameRegister") + "\n";
+            errors += _lang.Get("UsernameRegister") + "<br/>";
 
         if (!ValidationHelper.IsValidString(request.DisplayName, false, 3, 50))
-            errors += _lang.Get("DisplaynameRegister") + "\n";
+            errors += _lang.Get("DisplaynameRegister") + "<br/>";
 
         if (!ValidationHelper.IsStrongPassword(request.Password))
-            errors += _lang.Get("PasswordRegister") + "\n";
+            errors += _lang.Get("PasswordRegister") + "<br/>";
 
         if (!ValidationHelper.IsValidEmail(request.Email))
-            errors += _lang.Get("EmailRegister") + "\n";
+            errors += _lang.Get("EmailRegister") + "<br/>";
 
         if (
             !ValidationHelper.IsValidDateOfBirth(request.DateOfBirth.ToDateTime(new TimeOnly(0, 0)))
         )
-            errors += _lang.Get("DobRegister") + "\n";
+            errors += _lang.Get("DobRegister") + "<br/>";
         if (!string.IsNullOrEmpty(errors))
         {
             return ApiResponse.BadRequest(errors.Trim());
@@ -131,11 +131,11 @@ public class AuthController : ControllerBase
         // Check existence
         if (await _service.GetByUsernameAsync(request.Username) != null)
         {
-            errors += _lang.Get("UsernameExist") + "\n";
+            errors += _lang.Get("UsernameExist") + "<br/>";
         }
         if (await _service.GetByEmailAsync(request.Email) != null)
         {
-            errors += _lang.Get("EmailExist") + "\n";
+            errors += _lang.Get("EmailExist") + "<br/>";
         }
         if (!string.IsNullOrEmpty(errors))
         {
@@ -159,7 +159,7 @@ public class AuthController : ControllerBase
     /// 500 - Returns error message if exception occurs.
     /// </returns>
     [HttpGet("confirm")]
-    [CheckStatusHelper([BusinessObject.Enums.StatusType.InActive])]
+    // [CheckStatusHelper([BusinessObject.Enums.StatusType.InActive])]
     public async Task<IActionResult> ConfirmAccount(
         [FromQuery] string type,
         [FromQuery] string token
@@ -174,7 +174,7 @@ public class AuthController : ControllerBase
         {
             var res = await _service.ConfirmRegisterAccountAsync(token);
             return res
-                ? ApiResponse.Success(_lang.Get("EmailConfirmed"))
+                ? ApiResponse.Success(res, _lang.Get("ConfirmSuccessful"))
                 : ApiResponse.BadRequest(_lang.Get("InvalidToken"));
         }
         else

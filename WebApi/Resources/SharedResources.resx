@@ -158,4 +158,13 @@
     <data name="EmailExist" xml:space="preserve">
         <value>Email address is already in use. Please use a different email address.</value>
     </data>
+    <data name="InvalidToken" xml:space="preserve">
+        <value>The confirmation link is invalid or has expired.</value>
+    </data>
+    <data name="ConfirmEmail" xml:space="preserve">
+        <value>Confirmation email has been sent. Please check your email.</value>
+    </data>
+    <data name="ConfirmSuccessful" xml:space="preserve">
+        <value>Confirm successful. Now, you login to your account.</value>
+    </data>
 </root>

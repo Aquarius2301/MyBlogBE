@@ -30,5 +30,13 @@
     <data name="EmailExist" xml:space="preserve">
         <value>メールアドレスは既に使用されています。別のメールアドレスを使用してください。 </value>
     </data>
-
+    <data name="InvalidToken" xml:space="preserve">
+        <value>リンクが無効であるか、有効期限が切れています。</value>
+    </data>
+    <data name="ConfirmEmail" xml:space="preserve">
+        <value>確認メールを送信しました。メールを確認してください。</value>
+    </data>
+    <data name="ConfirmSuccessful" xml:space="preserve">
+        <value>確認が成功しました。これでアカウントにログインできます。</value>
+    </data>
 </root>
