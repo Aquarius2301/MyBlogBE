@@ -5,6 +5,7 @@ public class GetCommentsResponse
     public Guid Id { get; set; }
     public Guid AccountId { get; set; }
     public string AccountName { get; set; } = null!;
+    public string AccountAvatar { get; set; } = null!;
     public string Content { get; set; } = null!;
     public DateTime CreatedAt { get; set; }
     public List<string> CommentPictures { get; set; } = null!;
@@ -19,6 +20,7 @@ public class GetChildCommentsResponse
     public Guid Id { get; set; }
     public Guid AccountId { get; set; }
     public string AccountName { get; set; } = null!;
+    public string AccountAvatar { get; set; } = null!;
     public string ReplyAccountName { get; set; } = null!;
     public string Content { get; set; } = null!;
     public DateTime CreatedAt { get; set; }

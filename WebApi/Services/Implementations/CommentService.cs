@@ -43,6 +43,7 @@ public class CommentService : ICommentService
                 Content = c.Content,
                 AccountId = c.AccountId,
                 AccountName = c.Account.DisplayName,
+                AccountAvatar = c.Account.Picture != null ? c.Account.Picture.Link : "",
                 ReplyAccountName =
                     c.ReplyAccount != null ? c.ReplyAccount.DisplayName : string.Empty,
                 CreatedAt = c.CreatedAt,

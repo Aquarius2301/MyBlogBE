@@ -36,6 +36,7 @@ public class GetMyPostsResponse
 
 public class PostLatestComment
 {
+    public string Avatar { get; set; } = null!;
     public string Username { get; set; } = null!;
     public string DisplayName { get; set; } = null!;
     public string Content { get; set; } = null!;
@@ -49,8 +50,9 @@ public class GetPostDetailResponse
     public string Content { get; set; } = null!;
     public Guid AccountId { get; set; }
     public string AccountName { get; set; } = null!;
+    public string AccountAvatar { get; set; } = null!;
     public DateTime CreatedAt { get; set; }
-    public List<string> PostPicture { get; set; } = null!;
+    public List<string> PostPictures { get; set; } = null!;
     public bool IsLiked { get; set; }
     public int LikeCount { get; set; }
     public int CommentCount { get; set; }

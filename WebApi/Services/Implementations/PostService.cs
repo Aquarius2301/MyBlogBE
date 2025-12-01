@@ -57,6 +57,7 @@ public class PostService : IPostService
                     .OrderByDescending(c => c.CreatedAt)
                     .Select(c => new PostLatestComment
                     {
+                        Avatar = c.Account.Picture != null ? c.Account.Picture.Link : "",
                         Username = c.Account.Username,
                         DisplayName = c.Account.DisplayName,
                         Content = c.Content,
@@ -133,8 +134,9 @@ public class PostService : IPostService
                 Content = x.Content,
                 AccountId = x.AccountId,
                 AccountName = x.Account.DisplayName,
+                AccountAvatar = x.Account.Picture != null ? x.Account.Picture.Link : "",
                 CreatedAt = x.CreatedAt,
-                PostPicture = x.Pictures.Select(pp => pp.Link).ToList(),
+                PostPictures = x.Pictures.Select(pp => pp.Link).ToList(),
                 LikeCount = x.PostLikes.Count(),
                 CommentCount = x.Comments.Count(),
                 IsLiked = x.PostLikes.Any(pl => pl.PostId == x.Id && pl.AccountId == accountId),
@@ -196,7 +198,7 @@ public class PostService : IPostService
     )
     {
         var existingPost = await _unitOfWork.Posts.GetByIdAsync(postId);
-        if (existingPost == null || existingPost.AccountId != accountId)
+        if (existingPost == null)
         {
             return null;
         }
@@ -215,6 +217,7 @@ public class PostService : IPostService
                 Content = c.Content,
                 AccountId = c.AccountId,
                 AccountName = c.Account.DisplayName,
+                AccountAvatar = c.Account.Picture != null ? c.Account.Picture.Link : "",
                 CreatedAt = c.CreatedAt,
                 CommentPictures = c.Pictures.Select(cp => cp.Link).ToList(),
                 LikeCount = c.CommentLikes.Count(),
