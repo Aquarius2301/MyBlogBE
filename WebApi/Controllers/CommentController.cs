@@ -47,7 +47,14 @@ public class CommentController : ControllerBase
         var res = await _service.GetChildCommentList(id, request.Cursor, user.Id, request.PageSize);
 
         return res != null
-            ? ApiResponse.Success(res)
+            ? ApiResponse.Success(
+                new PaginationResponse
+                {
+                    Items = res,
+                    Cursor = res.Count > 0 ? res.Last().CreatedAt : null,
+                    PageSize = request.PageSize,
+                }
+            )
             : ApiResponse.NotFound(_lang.Get("NoComment"));
     }
 
