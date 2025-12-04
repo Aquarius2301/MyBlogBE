@@ -34,7 +34,7 @@ public interface IPostService
     /// <param name="accountId">The ID of the user.</param>
     /// <param name="pageSize">The number of posts to return per request.</param>
     /// <returns>A list of posts created by the specified user.</returns>
-    Task<List<GetMyPostsResponse>> GetMyPostsListAsync(
+    Task<List<GetPostsResponse>> GetMyPostsListAsync(
         DateTime? cursor,
         Guid accountId,
         int pageSize

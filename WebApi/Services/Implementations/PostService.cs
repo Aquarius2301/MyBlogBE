@@ -50,6 +50,7 @@ public class PostService : IPostService
                 AccountId = x.AccountId,
                 AccountName = x.Account.DisplayName,
                 AccountAvatar = x.Account.Picture != null ? x.Account.Picture.Link : "",
+                IsOwner = x.AccountId == accountId,
                 CreatedAt = x.CreatedAt,
                 PostPictures = x.Pictures.Select(pp => pp.Link).ToList(),
                 LatestComment = x
@@ -79,7 +80,7 @@ public class PostService : IPostService
         return posts.OrderByDescending(x => x.Score).ToList();
     }
 
-    public async Task<List<GetMyPostsResponse>> GetMyPostsListAsync(
+    public async Task<List<GetPostsResponse>> GetMyPostsListAsync(
         DateTime? cursor,
         Guid accountId,
         int pageSize
@@ -92,15 +93,17 @@ public class PostService : IPostService
                 && x.AccountId == accountId
                 && (cursor == null ? x.CreatedAt < DateTime.UtcNow : x.CreatedAt < cursor)
             )
-            .Select(x => new GetMyPostsResponse
+            .Select(x => new GetPostsResponse
             {
                 Id = x.Id,
                 Link = x.Link,
                 Content = x.Content,
                 AccountId = x.AccountId,
                 AccountName = x.Account.DisplayName,
+                AccountAvatar = x.Account.Picture != null ? x.Account.Picture.Link : "",
+                IsOwner = true,
                 CreatedAt = x.CreatedAt,
-                PostPicture = x.Pictures.Select(pp => pp.Link).ToList(),
+                PostPictures = x.Pictures.Select(pp => pp.Link).ToList(),
                 LatestComment = x
                     .Comments.Where(x => x.ParentCommentId == null)
                     .OrderByDescending(c => c.CreatedAt)
@@ -135,6 +138,7 @@ public class PostService : IPostService
                 AccountId = x.AccountId,
                 AccountName = x.Account.DisplayName,
                 AccountAvatar = x.Account.Picture != null ? x.Account.Picture.Link : "",
+                IsOwner = x.AccountId == accountId,
                 CreatedAt = x.CreatedAt,
                 PostPictures = x.Pictures.Select(pp => pp.Link).ToList(),
                 LikeCount = x.PostLikes.Count(),
