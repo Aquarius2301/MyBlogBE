@@ -8,6 +8,7 @@ public class AccountResponse
     public string Username { get; set; } = null!;
     public string Email { get; set; } = null!;
     public string DisplayName { get; set; } = null!;
+    public bool IsOwner { get; set; } = false;
     public DateOnly DateOfBirth { get; set; }
     public string AvatarUrl { get; set; } = null!;
     public string Status { get; set; } = null!;

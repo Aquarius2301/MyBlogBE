@@ -125,6 +125,52 @@ public class PostService : IPostService
         return await query.ToListAsync();
     }
 
+    public async Task<List<GetPostsResponse>> GetPostsByUsername(
+        string username,
+        DateTime? cursor,
+        Guid accountId,
+        int pageSize
+    )
+    {
+        var query = _unitOfWork
+            .Posts.GetQuery()
+            .Where(x =>
+                x.DeletedAt == null
+                && x.Account.Username == username
+                && (cursor == null ? x.CreatedAt < DateTime.UtcNow : x.CreatedAt < cursor)
+            )
+            .Select(x => new GetPostsResponse
+            {
+                Id = x.Id,
+                Link = x.Link,
+                Content = x.Content,
+                AccountId = x.AccountId,
+                AccountName = x.Account.DisplayName,
+                AccountAvatar = x.Account.Picture != null ? x.Account.Picture.Link : "",
+                IsOwner = x.AccountId == accountId,
+                CreatedAt = x.CreatedAt,
+                PostPictures = x.Pictures.Select(pp => pp.Link).ToList(),
+                LatestComment = x
+                    .Comments.Where(x => x.ParentCommentId == null)
+                    .OrderByDescending(c => c.CreatedAt)
+                    .Select(c => new PostLatestComment
+                    {
+                        Username = c.Account.Username,
+                        DisplayName = c.Account.DisplayName,
+                        Content = c.Content,
+                        CreatedAt = c.CreatedAt,
+                    })
+                    .FirstOrDefault(),
+                LikeCount = x.PostLikes.Count(),
+                CommentCount = x.Comments.Count(),
+                IsLiked = x.PostLikes.Any(pl => pl.PostId == x.Id && pl.AccountId == accountId),
+            })
+            .OrderByDescending(x => x.CreatedAt)
+            .Take(pageSize);
+
+        return await query.ToListAsync();
+    }
+
     public async Task<GetPostDetailResponse?> GetPostByLinkAsync(string link, Guid accountId)
     {
         var post = await _unitOfWork

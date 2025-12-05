@@ -45,6 +45,7 @@ public interface IAccountService
     /// <returns> An <see cref="AccountResponse"/> contains profile information of the account if found;
     /// otherwise, null.</returns>
     Task<AccountResponse?> GetProfileByIdAsync(Guid accountId);
+    Task<AccountResponse?> GetProfileByUsernameAsync(string username, Guid userId);
 
     /// <summary>
     /// Update account information

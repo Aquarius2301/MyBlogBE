@@ -40,6 +40,13 @@ public interface IPostService
         int pageSize
     );
 
+    Task<List<GetPostsResponse>> GetPostsByUsername(
+        string username,
+        DateTime? cursor,
+        Guid accountId,
+        int pageSize
+    );
+
     /// <summary>
     /// Gets detailed information of a post by its link (slug).
     /// </summary>

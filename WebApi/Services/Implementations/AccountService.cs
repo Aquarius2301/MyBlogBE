@@ -63,6 +63,7 @@ public class AccountService : IAccountService
                 Id = a.Id,
                 Username = a.Username,
                 Email = a.Email,
+                IsOwner = a.Id == accountId,
                 DisplayName = a.DisplayName,
                 DateOfBirth = a.DateOfBirth,
                 AvatarUrl = a.Picture != null ? a.Picture.Link : "",
@@ -70,6 +71,27 @@ public class AccountService : IAccountService
                 CreatedAt = a.CreatedAt,
             })
             .FirstOrDefaultAsync(x => x.Id == accountId);
+
+        return account;
+    }
+
+    public async Task<AccountResponse?> GetProfileByUsernameAsync(string username, Guid userId)
+    {
+        var account = await _unitOfWork
+            .Accounts.GetQuery()
+            .Select(a => new AccountResponse
+            {
+                Id = a.Id,
+                Username = a.Username,
+                Email = a.Email,
+                IsOwner = a.Id == userId,
+                DisplayName = a.DisplayName,
+                DateOfBirth = a.DateOfBirth,
+                AvatarUrl = a.Picture != null ? a.Picture.Link : "",
+                Status = a.Status.ToString(),
+                CreatedAt = a.CreatedAt,
+            })
+            .FirstOrDefaultAsync(x => x.Username == username);
 
         return account;
     }

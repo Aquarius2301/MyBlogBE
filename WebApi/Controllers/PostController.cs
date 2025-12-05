@@ -82,6 +82,35 @@ public class PostController : ControllerBase
         );
     }
 
+    [HttpGet("username/{username}")]
+    [CheckStatusHelper([
+        BusinessObject.Enums.StatusType.Active,
+        BusinessObject.Enums.StatusType.Suspended,
+    ])]
+    public async Task<IActionResult> GetPostsByUsername(
+        string username,
+        [FromQuery] PaginationRequest request
+    )
+    {
+        var user = _jwtHelper.GetAccountInfo();
+
+        var res = await _service.GetPostsByUsername(
+            username,
+            request.Cursor,
+            user.Id,
+            request.PageSize
+        );
+
+        return ApiResponse.Success(
+            new PaginationResponse
+            {
+                Items = res,
+                Cursor = res.Count() > 0 ? res.Last().CreatedAt : null,
+                PageSize = request.PageSize,
+            }
+        );
+    }
+
     /// <summary>
     /// Retrieves a specific post by its unique link identifier.
     /// </summary>

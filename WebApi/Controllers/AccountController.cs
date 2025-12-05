@@ -57,6 +57,18 @@ public class AccountController : ControllerBase
             : ApiResponse.Success(account);
     }
 
+    [HttpGet("profile/username/{username}")]
+    public async Task<IActionResult> GetProfileByUsername(string username)
+    {
+        var user = _jwtHelper.GetAccountInfo();
+
+        var account = await _service.GetProfileByUsernameAsync(username, user.Id);
+
+        return account == null
+            ? ApiResponse.NotFound("Account not found.")
+            : ApiResponse.Success(account);
+    }
+
     [HttpGet("")]
     public async Task<IActionResult> GetAccountName(
         [FromQuery] string name,
