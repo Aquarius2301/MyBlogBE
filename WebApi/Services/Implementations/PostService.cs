@@ -281,9 +281,23 @@ public class PostService : IPostService
         return comments.OrderByDescending(c => c.Score).ToList();
     }
 
-    public async Task<CreatePostResponse> AddPostAsync(CreatePostRequest request, Guid accountId)
+    public async Task<CreatePostResponse?> AddPostAsync(CreatePostRequest request, Guid accountId)
     {
         string link;
+
+        var existingAccount = await _unitOfWork
+            .Accounts.GetQuery()
+            .Include(a => a.Picture)
+            .FirstOrDefaultAsync(a =>
+                a.Id == accountId
+                && a.DeletedAt == null
+                && a.Status == BusinessObject.Enums.StatusType.Active
+            );
+
+        if (existingAccount == null)
+        {
+            return null;
+        }
 
         do
         {
@@ -318,9 +332,11 @@ public class PostService : IPostService
         return new CreatePostResponse
         {
             Id = newPost.Id,
+            AccountAvatar = existingAccount.Picture != null ? existingAccount.Picture.Link : "",
+            AccountName = existingAccount.DisplayName,
             Link = newPost.Link,
             Content = newPost.Content,
-            Pictures = postPictures.Select(pp => pp.Link).ToList(),
+            PostPictures = postPictures.Select(pp => pp.Link).ToList(),
             CreatedAt = createTime,
         };
     }
@@ -334,6 +350,8 @@ public class PostService : IPostService
         var existingPost = await _unitOfWork
             .Posts.GetQuery()
             .Include(p => p.Pictures)
+            .Include(p => p.Account)
+                .ThenInclude(a => a.Picture)
             .FirstOrDefaultAsync(p =>
                 p.Id == postId && p.AccountId == accountId && p.DeletedAt == null
             );
@@ -374,9 +392,12 @@ public class PostService : IPostService
         return new UpdatePostResponse
         {
             Id = existingPost.Id,
+            AccountAvatar =
+                existingPost.Account.Picture != null ? existingPost.Account.Picture.Link : "",
+            AccountName = existingPost.Account.DisplayName,
             Link = existingPost.Link,
             Content = request.Content,
-            Pictures = existingPost.Pictures.Select(x => x.Link).ToList(),
+            PostPictures = existingPost.Pictures.Select(x => x.Link).ToList(),
             UpdatedAt = updateTime,
         };
     }

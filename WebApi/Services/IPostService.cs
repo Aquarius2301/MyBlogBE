@@ -99,7 +99,7 @@ public interface IPostService
     /// <param name="request">The post creation request containing post details.</param>
     /// <param name="accountId">The ID of the account creating the post.</param>
     /// <returns>A <see cref="CreatePostResponse" objects representing created post></returns>
-    Task<CreatePostResponse> AddPostAsync(CreatePostRequest request, Guid accountId);
+    Task<CreatePostResponse?> AddPostAsync(CreatePostRequest request, Guid accountId);
 
     /// <summary>
     /// Updates an existing post.

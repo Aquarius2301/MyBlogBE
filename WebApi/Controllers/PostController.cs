@@ -243,7 +243,9 @@ public class PostController : ControllerBase
 
         var res = await _service.AddPostAsync(request, user.Id);
 
-        return ApiResponse.Created(res, _lang.Get("PostCreated"));
+        return res == null
+            ? ApiResponse.BadRequest(_lang.Get("NoAccount"))
+            : ApiResponse.Created(res, _lang.Get("PostCreated"));
     }
 
     [HttpPut("{id}")]

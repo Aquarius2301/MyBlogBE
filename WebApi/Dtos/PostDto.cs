@@ -69,9 +69,11 @@ public class CreatePostRequest
 public class CreatePostResponse
 {
     public Guid Id { get; set; }
+    public string AccountAvatar { get; set; } = null!;
+    public string AccountName { get; set; } = null!;
     public string Link { get; set; } = null!;
     public string Content { get; set; } = null!;
-    public List<string> Pictures { get; set; } = [];
+    public List<string> PostPictures { get; set; } = [];
     public DateTime CreatedAt { get; set; }
 }
 
@@ -85,9 +87,11 @@ public class UpdatePostRequest
 public class UpdatePostResponse
 {
     public Guid Id { get; set; }
+    public string AccountAvatar { get; set; } = null!;
+    public string AccountName { get; set; } = null!;
     public string Link { get; set; } = null!;
     public string Content { get; set; } = null!;
-    public List<string> Pictures { get; set; } = [];
+    public List<string> PostPictures { get; set; } = [];
     public DateTime UpdatedAt { get; set; }
 }
 
