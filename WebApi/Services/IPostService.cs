@@ -125,4 +125,6 @@ public interface IPostService
     /// true if the post was successfully deleted; otherwise, false.
     /// </returns>
     Task<bool> DeletePostAsync(Guid postId, Guid accountId);
+
+    Task<List<string>> UploadPostImagesAsync(UploadPostImageRequest request, Guid accountId);
 }

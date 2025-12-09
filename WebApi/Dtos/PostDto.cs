@@ -63,7 +63,7 @@ public class GetPostDetailResponse
 public class CreatePostRequest
 {
     public string Content { get; set; } = null!;
-    public List<IFormFile> Pictures { get; set; } = [];
+    public List<string> Pictures { get; set; } = [];
 }
 
 public class CreatePostResponse
@@ -98,6 +98,11 @@ public class UpdatePostResponse
 public class PostPictureRequest
 {
     public List<IFormFile> Pictures { get; set; } = null!;
+}
+
+public class UploadPostImageRequest
+{
+    public IFormFile[] Pictures { get; set; } = null!;
 }
 
 

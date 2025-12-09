@@ -194,11 +194,15 @@ public class CloudinaryHelper
             finally
             {
                 semaphore.Release();
-                item.Stream.Dispose(); // Always dispose the MemoryStream when done
             }
         });
 
         await Task.WhenAll(tasks);
+
+        foreach (var item in preparedFiles)
+        {
+            item.Stream.Dispose();
+        }
 
         // 3. ROLLBACK ON FAILURE
         if (!errors.IsEmpty)

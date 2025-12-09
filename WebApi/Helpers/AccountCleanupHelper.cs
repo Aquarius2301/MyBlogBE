@@ -42,6 +42,7 @@ public class AccountCleanupHelper : BackgroundService
             await Task.WhenAll([
                 BackgroundAsync(CleanupExpiredAccountsAsync(), "CleanupExpiredAccountsAsync"),
                 BackgroundAsync(SelfRemoveAccountsAsync(), "SelfRemoveAccountsAsync"),
+                BackgroundAsync(RemovePicture(), "RemovePicture"),
             ]);
 
             await Task.Delay(_interval, stoppingToken);
@@ -121,5 +122,31 @@ public class AccountCleanupHelper : BackgroundService
         }
 
         return expiredAccounts.Count;
+    }
+
+    /// <summary>
+    /// Removes pictures that are not associated with any account, post, or comment.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    /// <remarks>
+    /// Removes pictures that are not associated with any account, post, or comment.
+    /// Logs the number of pictures removed to the console.
+    /// </remarks>
+    private async Task<int> RemovePicture()
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+        var cloudinary = scope.ServiceProvider.GetRequiredService<CloudinaryHelper>();
+        var pictures = await unitOfWork
+            .Pictures.GetQuery()
+            .Where(a => a.AccountId == null && a.PostId == null && a.CommentId == null)
+            .ToListAsync();
+
+        var res = await cloudinary.DeleteImages(pictures.Select(p => p.PublicId).ToList());
+
+        unitOfWork.Pictures.RemoveRange(pictures);
+        await unitOfWork.SaveChangesAsync();
+
+        return pictures.Count;
     }
 }

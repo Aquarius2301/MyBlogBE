@@ -232,7 +232,7 @@ public class PostController : ControllerBase
     /// </returns>
     [HttpPost("")]
     [CheckStatusHelper(BusinessObject.Enums.StatusType.Active)]
-    public async Task<IActionResult> AddPost([FromForm] CreatePostRequest request)
+    public async Task<IActionResult> AddPost([FromBody] CreatePostRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Content))
         {
@@ -283,5 +283,15 @@ public class PostController : ControllerBase
         return res
             ? ApiResponse.Success(message: _lang.Get("PostDeleted"))
             : ApiResponse.NotFound(_lang.Get("NoPost"));
+    }
+
+    [HttpPost("upload")]
+    public async Task<IActionResult> UploadPostImage([FromForm] UploadPostImageRequest request)
+    {
+        var user = _jwtHelper.GetAccountInfo();
+
+        var res = await _service.UploadPostImagesAsync(request, user.Id);
+
+        return ApiResponse.Success(res);
     }
 }

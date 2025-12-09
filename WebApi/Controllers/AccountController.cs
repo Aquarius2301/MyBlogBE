@@ -146,7 +146,7 @@ public class AccountController : ControllerBase
     {
         var user = _jwtHelper.GetAccountInfo();
 
-        var imageDto = await _service.ChangeAvatarAsync(user.Id, request.AvatarFile);
+        var imageDto = await _service.ChangeAvatarAsync(user.Id, request.Avatar);
 
         return imageDto != null
             ? ApiResponse.Success(imageDto)

@@ -47,5 +47,5 @@ public class UpdatePasswordRequest
 
 public class ChangeAvatarRequest
 {
-    public IFormFile AvatarFile { get; set; } = null!;
+    public IFormFile Avatar { get; set; } = null!;
 }
