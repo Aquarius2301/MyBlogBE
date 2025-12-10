@@ -49,6 +49,7 @@ public class PostService : IPostService
                 Content = x.Content,
                 AccountId = x.AccountId,
                 AccountName = x.Account.DisplayName,
+                AccountUsername = x.Account.Username,
                 AccountAvatar = x.Account.Picture != null ? x.Account.Picture.Link : "",
                 IsOwner = x.AccountId == accountId,
                 CreatedAt = x.CreatedAt,
@@ -100,6 +101,7 @@ public class PostService : IPostService
                 Content = x.Content,
                 AccountId = x.AccountId,
                 AccountName = x.Account.DisplayName,
+                AccountUsername = x.Account.Username,
                 AccountAvatar = x.Account.Picture != null ? x.Account.Picture.Link : "",
                 IsOwner = true,
                 CreatedAt = x.CreatedAt,
@@ -146,6 +148,7 @@ public class PostService : IPostService
                 Content = x.Content,
                 AccountId = x.AccountId,
                 AccountName = x.Account.DisplayName,
+                AccountUsername = x.Account.Username,
                 AccountAvatar = x.Account.Picture != null ? x.Account.Picture.Link : "",
                 IsOwner = x.AccountId == accountId,
                 CreatedAt = x.CreatedAt,
@@ -381,32 +384,45 @@ public class PostService : IPostService
             return null;
         }
 
-        var pictureLinks = new List<ImageDto>();
+        // var pictureLinks = new List<ImageDto>();
 
-        if (request.ClearPictures)
+        // if (request.ClearPictures)
+        // {
+        var existingPictures = await _unitOfWork.Pictures.GetByPostIdAsync(postId);
+
+        foreach (var picture in existingPictures)
         {
-            var existingPictures = await _unitOfWork.Pictures.GetByPostIdAsync(postId);
-
-            await _cloudinaryHelper.DeleteImages(existingPictures.Select(x => x.PublicId).ToList());
-            _unitOfWork.Pictures.RemoveRange(existingPictures);
-
-            pictureLinks = await _cloudinaryHelper.UploadImages(request.Pictures);
-
-            _unitOfWork.Pictures.AddRange(
-                pictureLinks.Select(pl => new Picture
-                {
-                    Id = Guid.NewGuid(),
-                    PostId = existingPost.Id,
-                    PublicId = pl.PublicId,
-                    Link = pl.Link,
-                })
-            );
+            picture.PostId = null;
         }
+
+        // _unitOfWork.Pictures.AddRange(
+        //     request.Pictures.Select(pl => new Picture
+        //     {
+        //         Id = Guid.NewGuid(),
+        //         PostId = existingPost.Id,
+        //         PublicId = pl.PublicId,
+        //         Link = pl.Link,
+        //     })
+        // );
+        // }
 
         var updateTime = DateTime.UtcNow;
 
         existingPost.Content = request.Content;
         existingPost.UpdatedAt = updateTime;
+
+        if (request.Pictures != null && request.Pictures.Any())
+        {
+            var pictures = await _unitOfWork
+                .Pictures.GetQuery()
+                .Where(p => request.Pictures.Contains(p.Link))
+                .ToListAsync();
+
+            foreach (var picture in pictures)
+            {
+                picture.PostId = postId;
+            }
+        }
 
         await _unitOfWork.SaveChangesAsync();
 

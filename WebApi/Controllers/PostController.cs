@@ -253,7 +253,7 @@ public class PostController : ControllerBase
         BusinessObject.Enums.StatusType.Active,
         BusinessObject.Enums.StatusType.Suspended,
     ])]
-    public async Task<IActionResult> UpdatePost(Guid id, [FromForm] UpdatePostRequest request)
+    public async Task<IActionResult> UpdatePost(Guid id, [FromBody] UpdatePostRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Content))
         {

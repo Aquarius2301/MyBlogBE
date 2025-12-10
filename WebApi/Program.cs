@@ -164,6 +164,7 @@ builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<IPostService, PostService>();
+builder.Services.AddScoped<IUploadService, UploadService>();
 
 // builder.Services.AddCors(options =>
 // {
