@@ -95,6 +95,25 @@ builder
         };
         options.Events = new JwtBearerEvents
         {
+            OnMessageReceived = context =>
+            {
+                // Priority read token from Cookie
+                if (context.Request.Cookies.ContainsKey("accessToken"))
+                {
+                    context.Token = context.Request.Cookies["accessToken"];
+                }
+                // Fallback: read from Authorization header (for testing with Postman, Swagger,...)
+                else if (context.Request.Headers.ContainsKey("Authorization"))
+                {
+                    var authHeader = context.Request.Headers["Authorization"].ToString();
+                    if (authHeader.StartsWith("Bearer "))
+                    {
+                        context.Token = authHeader.Substring(7);
+                    }
+                }
+
+                return Task.CompletedTask;
+            },
             // 401 - Unauthorized
             OnChallenge = async context =>
             {

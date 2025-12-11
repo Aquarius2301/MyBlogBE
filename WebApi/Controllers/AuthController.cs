@@ -67,17 +67,50 @@ public class AuthController : ControllerBase
             );
 
             // Save cookie on server
-            var cookieOptions = new CookieOptions
-            {
-                HttpOnly = true,
-                Expires = DateTime.UtcNow.AddDays(_settings.RefreshTokenDurationDays),
-                Secure = true,
-                SameSite = SameSiteMode.Lax,
-            };
+            // var cookieOptions = new CookieOptions
+            // {
+            //     HttpOnly = true,
+            //     Expires = DateTime.UtcNow.AddDays(_settings.RefreshTokenDurationDays),
+            //     Secure = true,
+            //     SameSite = SameSiteMode.Lax,
+            // };
+
+            // var cookieOptions = new CookieOptions
+            // {
+            //     HttpOnly = true,
+            //     Expires = DateTime.UtcNow.AddDays(_settings.RefreshTokenDurationDays),
+            //     Secure = true,
+            //     SameSite = SameSiteMode.Lax,
+            // };
 
             if (authResponse != null)
             {
-                Response.Cookies.Append("refreshToken", authResponse.RefreshToken, cookieOptions);
+                Response.Cookies.Append(
+                    "accessToken",
+                    authResponse.AccessToken,
+                    new CookieOptions
+                    {
+                        HttpOnly = true,
+                        Secure = true,
+                        SameSite = SameSiteMode.Strict,
+                        Expires = DateTimeOffset.UtcNow.AddMinutes(
+                            _settings.AccessTokenDurationMinutes
+                        ),
+                        Path = "/",
+                    }
+                );
+                Response.Cookies.Append(
+                    "refreshToken",
+                    authResponse.RefreshToken,
+                    new CookieOptions
+                    {
+                        HttpOnly = true,
+                        Secure = true,
+                        SameSite = SameSiteMode.Strict,
+                        Expires = DateTimeOffset.UtcNow.AddDays(_settings.RefreshTokenDurationDays),
+                        Path = "/",
+                    }
+                );
                 return ApiResponse.Success(authResponse, _lang.Get("LoginSuccess"));
             }
             return ApiResponse.Unauthorized(_lang.Get("LoginFailed"));
@@ -211,9 +244,25 @@ public class AuthController : ControllerBase
         }
         var authResponse = await _service.GetRefreshTokenAsync(refreshToken);
 
-        return authResponse != null
-            ? ApiResponse.Success(authResponse)
-            : ApiResponse.Unauthorized(_lang.Get("InvalidToken"));
+        if (authResponse != null)
+        {
+            Response.Cookies.Append(
+                "accessToken",
+                authResponse.AccessToken,
+                new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Strict,
+                    Expires = DateTimeOffset.UtcNow.AddDays(_settings.RefreshTokenDurationDays),
+                    Path = "/",
+                }
+            );
+
+            return ApiResponse.Success(authResponse);
+        }
+
+        return ApiResponse.Unauthorized(_lang.Get("InvalidToken"));
     }
 
     /// <summary>
@@ -287,6 +336,28 @@ public class AuthController : ControllerBase
         var user = _jwtHelper.GetAccountInfo();
 
         var ok = await _service.RemoveRefresh(user.Id);
+
+        Response.Cookies.Delete(
+            "accessToken",
+            new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict,
+                Path = "/",
+            }
+        );
+
+        Response.Cookies.Delete(
+            "refreshToken",
+            new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict,
+                Path = "/",
+            }
+        );
 
         return ok ? ApiResponse.Success(_lang.Get("LoggedOut")) : ApiResponse.Unauthorized();
     }

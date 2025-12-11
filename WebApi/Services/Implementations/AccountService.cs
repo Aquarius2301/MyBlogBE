@@ -64,6 +64,7 @@ public class AccountService : IAccountService
                 Username = a.Username,
                 Email = a.Email,
                 IsOwner = a.Id == accountId,
+                Language = a.Language.ToString(),
                 DisplayName = a.DisplayName,
                 DateOfBirth = a.DateOfBirth,
                 AvatarUrl = a.Picture != null ? a.Picture.Link : "",

@@ -94,6 +94,12 @@ public class Account
     public StatusType Status { get; set; } = StatusType.Active;
 
     /// <summary>
+    /// Preferred language of the user.
+    /// </summary>
+    [Required]
+    public string Language { get; set; } = LanguageType.English.Code;
+
+    /// <summary>
     /// Timestamp when the account was created.
     /// </summary>
     [Required]
