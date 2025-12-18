@@ -142,13 +142,13 @@ public class AccountController : ControllerBase
     }
 
     [HttpPut("profile/me/change-avatar")]
-    public async Task<IActionResult> ChangeMyAvatar([FromForm] ChangeAvatarRequest request)
+    public async Task<IActionResult> ChangeMyAvatar([FromBody] ChangeAvatarRequest request)
     {
         var user = _jwtHelper.GetAccountInfo();
 
-        var imageDto = await _service.ChangeAvatarAsync(user.Id, request.Avatar);
+        var imageDto = await _service.ChangeAvatarAsync(user.Id, request.Picture);
 
-        return imageDto != null
+        return imageDto == true
             ? ApiResponse.Success(imageDto)
             : ApiResponse.NotFound(_lang.Get("AvatarChangeFailed"));
     }

@@ -150,45 +150,26 @@ public class AccountService : IAccountService
             && PasswordHasherHelper.VerifyPassword(password, account.HashedPassword);
     }
 
-    public async Task<ImageDto?> ChangeAvatarAsync(Guid accountId, IFormFile avatarFile)
+    public async Task<bool?> ChangeAvatarAsync(Guid accountId, string avatarFile)
     {
         //Check if account exists
-        var account = await _unitOfWork.Accounts.GetByIdAsync(accountId);
+        var account = await _unitOfWork
+            .Accounts.GetQuery()
+            .Include(a => a.Picture)
+            .FirstOrDefaultAsync(a => a.Id == accountId && a.DeletedAt == null);
 
         if (account == null)
         {
             return null;
         }
 
-        //Then, upload avatar
-        var imageDto = await _cloudinaryHelper.Upload(avatarFile);
+        var picture = await _unitOfWork.Pictures.GetQuery().FirstAsync(p => p.Link == avatarFile);
 
-        var picture = await _unitOfWork.Pictures.GetByAccountIdAsync(accountId);
+        account.Picture = picture;
 
-        if (picture != null) // Update existing avatar
-        {
-            // Delete old avatar from Cloudinary
-            await _cloudinaryHelper.Delete(picture.PublicId);
+        await _unitOfWork.SaveChangesAsync();
 
-            picture.Link = imageDto.Link;
-            picture.PublicId = imageDto.PublicId;
-            await _unitOfWork.SaveChangesAsync();
-        }
-        else // Add new avatar
-        {
-            var avatar = new Picture
-            {
-                Id = Guid.NewGuid(),
-                AccountId = accountId,
-                Link = imageDto.Link,
-                PublicId = imageDto.PublicId,
-            };
-
-            _unitOfWork.Pictures.Add(avatar);
-            await _unitOfWork.SaveChangesAsync();
-        }
-
-        return imageDto;
+        return true;
     }
 
     public async Task<DateTime?> SelfRemoveAccount(Guid accountId)

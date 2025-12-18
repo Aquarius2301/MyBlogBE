@@ -34,7 +34,7 @@ public class CommentService : ICommentService
             .Comments.GetQuery()
             .Where(c =>
                 c.ParentCommentId == commentId
-                && (cursor == null || c.CreatedAt < cursor)
+                && (cursor == null || c.CreatedAt > cursor)
                 && c.DeletedAt == null
             )
             .Select(c => new GetChildCommentsResponse
@@ -52,7 +52,7 @@ public class CommentService : ICommentService
                 CommentCount = c.Replies.Count(),
                 IsLiked = c.CommentLikes.Any(cl => cl.AccountId == accountId),
             })
-            .OrderByDescending(c => c.CreatedAt)
+            .OrderBy(c => c.CreatedAt)
             .Take(pageSize)
             .ToListAsync();
 
@@ -146,36 +146,30 @@ public class CommentService : ICommentService
             throw new AppException("Post does not exist", 404);
         }
 
-        // Upload images to Cloudinary
-        var images = await _cloudinaryHelper.UploadImages(request.Images);
-
-        // Add comment to database
         var comment = new Comment
         {
             Id = Guid.NewGuid(),
-            PostId = request.PostId,
             AccountId = accountId,
             Content = request.Content,
             ParentCommentId = request.ParentCommentId,
+            PostId = request.PostId,
             ReplyAccountId = request.ReplyAccountId,
             CreatedAt = DateTime.UtcNow,
         };
-
         _unitOfWork.Comments.Add(comment);
 
-        // Add pictures to database
-        var picture = images
-            .Select(i => new Picture
+        if (request.Images != null && request.Images.Any())
+        {
+            var pictures = await _unitOfWork
+                .Pictures.GetQuery()
+                .Where(p => request.Images.Contains(p.Link))
+                .ToListAsync();
+
+            foreach (var picture in pictures)
             {
-                Id = Guid.NewGuid(),
-                CommentId = comment.Id,
-                Link = i.Link,
-                PublicId = i.PublicId,
-            })
-            .ToList();
-
-        _unitOfWork.Pictures.AddRange(picture);
-
+                picture.CommentId = comment.Id;
+            }
+        }
         await _unitOfWork.SaveChangesAsync();
 
         return new CreateCommentResponse
@@ -186,7 +180,7 @@ public class CommentService : ICommentService
             ParentCommentId = comment.ParentCommentId,
             PostId = comment.PostId,
             ReplyAccountId = comment.ReplyAccountId,
-            Pictures = images.Select(i => i.Link).ToList(),
+            Pictures = request.Images ?? [],
             CreatedAt = comment.CreatedAt,
         };
     }

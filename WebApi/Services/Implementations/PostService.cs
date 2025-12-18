@@ -38,10 +38,7 @@ public class PostService : IPostService
     {
         var query = _unitOfWork
             .Posts.GetQuery()
-            .Where(x =>
-                x.DeletedAt == null
-                && (cursor == null ? x.CreatedAt < DateTime.UtcNow : x.CreatedAt < cursor)
-            )
+            .Where(x => x.DeletedAt == null && (cursor == null || x.CreatedAt < cursor))
             .Select(x => new GetPostsResponse
             {
                 Id = x.Id,
@@ -78,7 +75,7 @@ public class PostService : IPostService
 
         var posts = await query.ToListAsync();
 
-        return posts.OrderByDescending(x => x.Score).ToList();
+        return posts.ToList();
     }
 
     public async Task<List<GetPostsResponse>> GetMyPostsListAsync(
@@ -281,7 +278,7 @@ public class PostService : IPostService
             .Take(pageSize)
             .ToListAsync();
 
-        return comments.OrderByDescending(c => c.Score).ToList();
+        return comments;
     }
 
     public async Task<CreatePostResponse?> AddPostAsync(CreatePostRequest request, Guid accountId)
@@ -452,8 +449,10 @@ public class PostService : IPostService
 
         var existingPictures = await _unitOfWork.Pictures.GetByPostIdAsync(postId);
 
-        await _cloudinaryHelper.DeleteImages(existingPictures.Select(x => x.PublicId).ToList());
-        _unitOfWork.Pictures.RemoveRange(existingPictures);
+        foreach (var picture in existingPictures)
+        {
+            picture.PostId = null;
+        }
 
         await _unitOfWork.SaveChangesAsync();
 

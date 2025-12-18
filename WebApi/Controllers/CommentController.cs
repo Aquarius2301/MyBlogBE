@@ -115,7 +115,7 @@ public class CommentController : ControllerBase
     /// </returns>
     [HttpPost]
     [CheckStatusHelper([BusinessObject.Enums.StatusType.Active])]
-    public async Task<IActionResult> AddComment([FromForm] CreateCommentRequest request)
+    public async Task<IActionResult> AddComment([FromBody] CreateCommentRequest request)
     {
         // If ParentCommentId is provided, ReplyAccountId must also be provided, and vice versa
         if (request.ParentCommentId != null && request.ReplyAccountId == null)

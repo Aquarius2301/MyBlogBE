@@ -15,7 +15,7 @@ public interface IAccountService
     /// <param name="avatarFile">The new avatar file.</param>
     /// <returns> A <see cref="ImageDto"/> contains image data if the avatar was successfully changed;
     /// otherwise, null.</returns>
-    Task<ImageDto?> ChangeAvatarAsync(Guid accountId, IFormFile avatarFile);
+    Task<bool?> ChangeAvatarAsync(Guid accountId, string avatarFile);
 
     /// <summary>
     /// Change account password.

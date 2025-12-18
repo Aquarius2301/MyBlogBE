@@ -42,11 +42,11 @@ public class PostController : ControllerBase
 
         var res = await _service.GetPostsListAsync(request.Cursor, user.Id, request.PageSize);
 
-        Console.WriteLine(res.Count());
+        // Console.WriteLine(res.Count());
         return ApiResponse.Success(
             new PaginationResponse
             {
-                Items = res,
+                Items = res.OrderByDescending(x => x.Score).ToList(),
                 Cursor = res.Count() > 0 ? res.Last().CreatedAt : null,
                 PageSize = request.PageSize,
             }
@@ -212,7 +212,7 @@ public class PostController : ControllerBase
             ? ApiResponse.Success(
                 new PaginationResponse
                 {
-                    Items = res,
+                    Items = res.OrderByDescending(c => c.Score).ToList(),
                     Cursor = res.Count() > 0 ? res.Last().CreatedAt : null,
                     PageSize = request.PageSize,
                 }

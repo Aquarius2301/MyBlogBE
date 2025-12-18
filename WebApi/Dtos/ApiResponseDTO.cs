@@ -2,11 +2,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace WebApi.Dtos;
 
-public class ErrorData
-{
-    public object? Error { get; set; } = new object();
-}
-
 public class ApiResponse
 {
     public int StatusCode { get; set; }
@@ -37,13 +32,13 @@ public class ApiResponse
 
     public static IActionResult Conflict(string message = "Conflict", object? data = null)
     {
-        var res = new ApiResponse(409, message, new ErrorData { Error = data });
+        var res = new ApiResponse(409, message, data);
         return new ObjectResult(res) { StatusCode = 409 };
     }
 
     public static IActionResult BadRequest(string message = "Bad request", object? data = null)
     {
-        var res = new ApiResponse(400, message, new ErrorData { Error = data });
+        var res = new ApiResponse(400, message, data);
         return new ObjectResult(res) { StatusCode = 400 };
     }
 

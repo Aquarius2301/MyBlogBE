@@ -49,15 +49,15 @@ public class AuthController : ControllerBase
             var errors = new Dictionary<string, string>();
             if (string.IsNullOrWhiteSpace(request.Username))
             {
-                errors["Username"] = _lang.Get("UsernameEmpty");
+                errors["username"] = _lang.Get("UsernameEmpty");
             }
             if (string.IsNullOrEmpty(request.Password))
             {
-                errors["Password"] = _lang.Get("PasswordEmpty");
+                errors["password"] = _lang.Get("PasswordEmpty");
             }
-            if (errors.Any())
+            if (errors.Count > 0)
             {
-                return ApiResponse.BadRequest(_lang.Get("LoginFailed"), errors);
+                return ApiResponse.BadRequest(data: errors);
             }
 
             // Authenticate user
@@ -67,22 +67,6 @@ public class AuthController : ControllerBase
             );
 
             // Save cookie on server
-            // var cookieOptions = new CookieOptions
-            // {
-            //     HttpOnly = true,
-            //     Expires = DateTime.UtcNow.AddDays(_settings.RefreshTokenDurationDays),
-            //     Secure = true,
-            //     SameSite = SameSiteMode.Lax,
-            // };
-
-            // var cookieOptions = new CookieOptions
-            // {
-            //     HttpOnly = true,
-            //     Expires = DateTime.UtcNow.AddDays(_settings.RefreshTokenDurationDays),
-            //     Secure = true,
-            //     SameSite = SameSiteMode.Lax,
-            // };
-
             if (authResponse != null)
             {
                 Response.Cookies.Append(
@@ -111,9 +95,9 @@ public class AuthController : ControllerBase
                         Path = "/",
                     }
                 );
-                return ApiResponse.Success(authResponse, _lang.Get("LoginSuccess"));
+                return ApiResponse.Success();
             }
-            return ApiResponse.Unauthorized(_lang.Get("LoginFailed"));
+            return ApiResponse.Unauthorized("LoginFailed");
 
             // return authResponse != null
             //     ? ApiResponse.Success(authResponse)
@@ -137,42 +121,42 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
-        var errors = string.Empty;
+        var errors = new Dictionary<string, string>();
 
         // Check validation
         if (!ValidationHelper.IsValidString(request.Username, true, 3, 20))
-            errors += _lang.Get("UsernameRegister") + "<br/>";
+            errors["username"] = "UsernameInvalid";
 
         if (!ValidationHelper.IsValidString(request.DisplayName, false, 3, 50))
-            errors += _lang.Get("DisplaynameRegister") + "<br/>";
+            errors["displayName"] = "DisplayNameLength";
 
         if (!ValidationHelper.IsStrongPassword(request.Password))
-            errors += _lang.Get("PasswordRegister") + "<br/>";
+            errors["password"] = "PasswordInvalid";
 
         if (!ValidationHelper.IsValidEmail(request.Email))
-            errors += _lang.Get("EmailRegister") + "<br/>";
+            errors["email"] = "EmailInvalid";
 
         if (
             !ValidationHelper.IsValidDateOfBirth(request.DateOfBirth.ToDateTime(new TimeOnly(0, 0)))
         )
-            errors += _lang.Get("DobRegister") + "<br/>";
-        if (!string.IsNullOrEmpty(errors))
+            errors["dateOfBirth"] = "DateOfBirthInvalid";
+        if (errors.Count > 0)
         {
-            return ApiResponse.BadRequest(errors.Trim());
+            return ApiResponse.BadRequest(data: errors);
         }
 
         // Check existence
         if (await _service.GetByUsernameAsync(request.Username) != null)
         {
-            errors += _lang.Get("UsernameExist") + "<br/>";
+            errors["username"] = "UsernameExist";
         }
         if (await _service.GetByEmailAsync(request.Email) != null)
         {
-            errors += _lang.Get("EmailExist") + "<br/>";
+            errors["email"] = "EmailExist";
         }
-        if (!string.IsNullOrEmpty(errors))
+        if (errors.Count > 0)
         {
-            return ApiResponse.BadRequest(errors.Trim());
+            return ApiResponse.BadRequest(data: errors);
         }
 
         // Register account if no errors
@@ -285,7 +269,7 @@ public class AuthController : ControllerBase
 
         return res
             ? ApiResponse.Success(res, _lang.Get("ConfirmEmail"))
-            : ApiResponse.BadRequest(_lang.Get("NoAccount"));
+            : ApiResponse.BadRequest(data: new { Identifier = "NoAccountFound" });
     }
 
     /// <summary>
@@ -302,19 +286,17 @@ public class AuthController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.ConfirmCode))
         {
-            return ApiResponse.BadRequest(_lang.Get("TokenEmpty"));
+            return ApiResponse.BadRequest(data: new { confirmCode = "ConfirmCodeEmpty" });
         }
 
         if (string.IsNullOrWhiteSpace(request.NewPassword))
         {
-            return ApiResponse.BadRequest(_lang.Get("PasswordEmpty"));
+            return ApiResponse.BadRequest(data: new { newPassword = "PasswordInvalid" });
         }
 
         var res = await _service.ResetPasswordAsync(request.ConfirmCode, request.NewPassword);
 
-        return res
-            ? ApiResponse.Success(res, _lang.Get("PasswordChanged"))
-            : ApiResponse.BadRequest(_lang.Get("InvalidToken"));
+        return res ? ApiResponse.Success(res) : ApiResponse.BadRequest(_lang.Get("InvalidToken"));
     }
 
     /// <summary>

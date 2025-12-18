@@ -37,7 +37,7 @@ public class CreateCommentRequest
     public Guid? ParentCommentId { get; set; }
     public Guid PostId { get; set; }
     public Guid? ReplyAccountId { get; set; }
-    public List<IFormFile> Images { get; set; } = [];
+    public List<string> Images { get; set; } = new List<string>();
 }
 
 public class CreateCommentResponse
@@ -48,7 +48,7 @@ public class CreateCommentResponse
     public Guid? ParentCommentId { get; set; }
     public Guid PostId { get; set; }
     public Guid? ReplyAccountId { get; set; }
-    public List<string> Pictures { get; set; } = null!;
+    public List<string> Pictures { get; set; } = [];
     public DateTime CreatedAt { get; set; }
 }
 
