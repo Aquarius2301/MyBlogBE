@@ -74,7 +74,7 @@ public class CreatePostResponse
     public string AccountName { get; set; } = null!;
     public string Link { get; set; } = null!;
     public string Content { get; set; } = null!;
-    public List<string> PostPictures { get; set; } = [];
+    public List<string> Pictures { get; set; } = [];
     public DateTime CreatedAt { get; set; }
 }
 

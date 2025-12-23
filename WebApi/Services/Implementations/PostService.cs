@@ -357,7 +357,7 @@ public class PostService : IPostService
             Link = newPost.Link,
             Content = newPost.Content,
             // Dùng lại list pictures đã lấy ở bước 3, không cần query lại
-            PostPictures = request.Pictures ?? new List<string>(),
+            Pictures = request.Pictures ?? new List<string>(),
             CreatedAt = createTime,
         };
     }
