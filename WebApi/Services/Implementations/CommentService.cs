@@ -18,19 +18,14 @@ public class CommentService : ICommentService
         _cloudinaryHelper = cloudinaryHelper;
     }
 
-    public async Task<Comment?> GetByIdAsync(Guid commentId)
-    {
-        return await _unitOfWork.Comments.GetByIdAsync(commentId);
-    }
-
-    public async Task<List<GetCommentsResponse>> GetChildCommentList(
+    public async Task<(List<GetCommentsResponse>?, DateTime?)> GetChildCommentList(
         Guid commentId,
         DateTime? cursor,
         Guid accountId,
         int pageSize
     )
     {
-        var comments = await _unitOfWork
+        var baseQuery = _unitOfWork
             .Comments.GetQuery()
             .Where(c =>
                 c.ParentCommentId == commentId
@@ -38,6 +33,16 @@ public class CommentService : ICommentService
                 && (cursor == null || c.CreatedAt > cursor)
                 && c.DeletedAt == null
             )
+            .AsNoTracking();
+
+        if (!await baseQuery.AnyAsync())
+        {
+            return (null, null);
+        }
+
+        var commentQuery = baseQuery.OrderBy(c => c.CreatedAt).Take(pageSize + 1);
+
+        var comments = await commentQuery
             .Select(c => new GetCommentsResponse
             {
                 Id = c.Id,
@@ -49,33 +54,46 @@ public class CommentService : ICommentService
                     DisplayName = c.Account.DisplayName,
                     Avatar = c.Account.Picture != null ? c.Account.Picture.Link : string.Empty,
                 },
-                ReplyAccount = new AccountNameResponse
-                {
-                    Id = c.ReplyAccount.Id,
-                    Username = c.ReplyAccount.Username,
-                    DisplayName = c.ReplyAccount.DisplayName,
-                    Avatar =
-                        c.ReplyAccount.Picture != null ? c.ReplyAccount.Picture.Link : string.Empty,
-                },
+                ReplyAccount =
+                    c.ReplyAccount != null
+                        ? new AccountNameResponse
+                        {
+                            Id = c.ReplyAccount.Id,
+                            Username = c.ReplyAccount.Username,
+                            DisplayName = c.ReplyAccount.DisplayName,
+                            Avatar =
+                                c.ReplyAccount.Picture != null
+                                    ? c.ReplyAccount.Picture.Link
+                                    : string.Empty,
+                        }
+                        : null,
                 CreatedAt = c.CreatedAt,
-                CommentPictures = c.Pictures.Select(cp => cp.Link).ToList(),
+                Pictures = c.Pictures.Select(cp => cp.Link).ToList(),
                 LikeCount = c.CommentLikes.Count(),
                 CommentCount = c.Replies.Count(),
                 IsLiked = c.CommentLikes.Any(cl => cl.AccountId == accountId),
             })
-            .OrderBy(c => c.CreatedAt)
-            .Take(pageSize)
             .ToListAsync();
 
-        return comments.ToList();
+        var hasMore = comments.Count > pageSize;
+
+        var res = comments.Take(pageSize).ToList();
+
+        DateTime? nextCursor = hasMore ? res.Last().CreatedAt : null;
+
+        return (res, nextCursor);
     }
 
-    public async Task<bool> LikeCommentAsync(Guid commentId, Guid accountId)
+    public async Task<int?> LikeCommentAsync(Guid commentId, Guid accountId)
     {
-        var existingComment = await _unitOfWork.Comments.GetByIdAsync(commentId);
-        if (existingComment == null)
+        var existingComment = await _unitOfWork
+            .Comments.GetQuery()
+            .AsNoTracking()
+            .AnyAsync(x => x.Id == commentId);
+
+        if (!existingComment)
         {
-            return false;
+            return null;
         }
 
         var existingLike = await _unitOfWork.CommentLikes.GetByAccountAndCommentAsync(
@@ -93,25 +111,32 @@ public class CommentService : ICommentService
                     CreatedAt = DateTime.UtcNow,
                 }
             );
+
             await _unitOfWork.SaveChangesAsync();
         }
 
-        return true;
+        return await _unitOfWork
+            .CommentLikes.GetQuery()
+            .AsNoTracking()
+            .Where(x => x.CommentId == commentId)
+            .CountAsync();
     }
 
-    public async Task<bool> CancelLikeCommentAsync(Guid commentId, Guid accountId)
+    public async Task<int?> CancelLikeCommentAsync(Guid commentId, Guid accountId)
     {
-        var existingComment = await _unitOfWork.Comments.GetByIdAsync(commentId);
+        var existingComment = await _unitOfWork
+            .Comments.GetQuery()
+            .AsNoTracking()
+            .AnyAsync(x => x.Id == commentId);
 
-        if (existingComment == null)
+        if (!existingComment)
         {
-            return false;
+            return null;
         }
 
-        var existingLike = await _unitOfWork.CommentLikes.GetByAccountAndCommentAsync(
-            accountId,
-            commentId
-        );
+        var existingLike = await _unitOfWork
+            .CommentLikes.GetQuery()
+            .FirstOrDefaultAsync(cl => cl.AccountId == accountId && cl.CommentId == commentId);
 
         if (existingLike != null)
         {
@@ -119,95 +144,128 @@ public class CommentService : ICommentService
             await _unitOfWork.SaveChangesAsync();
         }
 
-        return true;
+        return await _unitOfWork
+            .CommentLikes.GetQuery()
+            .AsNoTracking()
+            .Where(x => x.CommentId == commentId)
+            .CountAsync();
     }
 
-    public async Task<CreateCommentResponse> AddCommentAsync(
+    public async Task<GetCommentsResponse?> AddCommentAsync(
         Guid accountId,
         CreateCommentRequest request
     )
     {
+        var post = await _unitOfWork
+            .Posts.GetQuery()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == request.PostId && p.DeletedAt == null);
+
+        if (post == null)
+            return null;
+
         if (request.ParentCommentId != null)
         {
-            var parentComment = await _unitOfWork.Comments.GetByIdAsync(
-                request.ParentCommentId.Value
-            );
+            var parentComment = await _unitOfWork
+                .Comments.GetQuery()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c =>
+                    c.Id == request.ParentCommentId
+                    && c.PostId == request.PostId
+                    && c.DeletedAt == null
+                );
+
             if (parentComment == null)
-            {
-                throw new AppException("Parent comment does not exist", 404);
-            }
+                return null;
         }
+
+        AccountNameResponse? replyAccount = null;
 
         if (request.ReplyAccountId != null)
         {
-            var parentComment = await _unitOfWork.Accounts.GetByIdAsync(
-                request.ReplyAccountId.Value
-            );
+            var parentAccount = await _unitOfWork
+                .Accounts.GetQuery()
+                .AsNoTracking()
+                .Select(a => new AccountNameResponse
+                {
+                    Id = a.Id,
+                    Username = a.Username,
+                    DisplayName = a.DisplayName,
+                    Avatar = a.Picture != null ? a.Picture.Link : string.Empty,
+                })
+                .FirstOrDefaultAsync(c => c.Id == request.ReplyAccountId);
 
-            if (parentComment == null)
+            if (parentAccount == null)
+                return null;
+        }
+
+        var commenter = await _unitOfWork
+            .Accounts.GetQuery()
+            .AsNoTracking()
+            .Where(a => a.Id == accountId)
+            .Select(a => new AccountNameResponse
             {
-                throw new AppException("Reply account does not exist", 404);
-            }
-        }
+                Id = a.Id,
+                Username = a.Username,
+                DisplayName = a.DisplayName,
+                Avatar = a.Picture != null ? a.Picture.Link : string.Empty,
+            })
+            .FirstAsync();
 
-        var post = await _unitOfWork.Posts.GetByIdAsync(request.PostId);
+        var now = DateTime.UtcNow;
+        var commentId = Guid.NewGuid();
 
-        if (post == null)
-        {
-            throw new AppException("Post does not exist", 404);
-        }
+        await _unitOfWork.BeginTransactionAsync();
 
         var comment = new Comment
         {
-            Id = Guid.NewGuid(),
-            AccountId = accountId,
+            Id = commentId,
+            AccountId = commenter.Id,
             Content = request.Content,
             ParentCommentId = request.ParentCommentId,
             PostId = request.PostId,
             ReplyAccountId = request.ReplyAccountId,
-            CreatedAt = DateTime.UtcNow,
+            CreatedAt = now,
         };
+
         _unitOfWork.Comments.Add(comment);
 
-        if (request.Images != null && request.Images.Any())
+        if (request.Pictures.Count > 0)
         {
-            var pictures = await _unitOfWork
+            await _unitOfWork
                 .Pictures.GetQuery()
-                .Where(p => request.Images.Contains(p.Link))
-                .ToListAsync();
-
-            foreach (var picture in pictures)
-            {
-                picture.CommentId = comment.Id;
-            }
+                .Where(p => request.Pictures.Contains(p.Link))
+                .ExecuteUpdateAsync(p => p.SetProperty(x => x.CommentId, comment.Id));
         }
-        await _unitOfWork.SaveChangesAsync();
 
-        return new CreateCommentResponse
+        await _unitOfWork.SaveChangesAsync();
+        await _unitOfWork.CommitTransactionAsync();
+
+        return new GetCommentsResponse
         {
             Id = comment.Id,
-            AccountId = accountId,
+            Commenter = commenter,
             Content = comment.Content,
             ParentCommentId = comment.ParentCommentId,
             PostId = comment.PostId,
-            ReplyAccountId = comment.ReplyAccountId,
-            Pictures = request.Images ?? [],
+            ReplyAccount = replyAccount,
+            LikeCount = 0,
+            CommentCount = 0,
+            IsLiked = false,
+            Pictures = request.Pictures ?? [],
             CreatedAt = comment.CreatedAt,
+            UpdatedAt = null,
         };
     }
 
-    public async Task<UpdateCommentResponse?> UpdateCommentAsync(
+    public async Task<GetCommentsResponse?> UpdateCommentAsync(
         Guid commentId,
         UpdateCommentRequest request,
         Guid accountId
     )
     {
-        var uploadedImages = new List<ImageDto>();
-        var images = new List<ImageDto>();
-
         var existingComment = await _unitOfWork
             .Comments.GetQuery()
-            .Include(c => c.Pictures)
             .FirstOrDefaultAsync(c =>
                 c.Id == commentId && c.AccountId == accountId && c.DeletedAt == null
             );
@@ -217,58 +275,79 @@ public class CommentService : ICommentService
             return null;
         }
 
-        // if ClearImages is true,  delete all existing images and upload new ones.
-        // if ClearImages is false, keep existing images (only update the content).
-        if (request.ClearImages)
-        {
-            await _cloudinaryHelper.DeleteImages(
-                existingComment.Pictures.Select(p => p.PublicId).ToList()
-            );
-
-            images = await _cloudinaryHelper.UploadImages(request.Images);
-        }
+        await _unitOfWork.BeginTransactionAsync();
 
         // Update comment content
         existingComment.Content = request.Content;
         existingComment.UpdatedAt = DateTime.UtcNow;
 
-        if (request.ClearImages)
+        // Clear existing pictures
+        await _unitOfWork
+            .Pictures.GetQuery()
+            .Where(p => p.CommentId == commentId)
+            .ExecuteUpdateAsync(p => p.SetProperty(x => x.CommentId, (Guid?)null));
+
+        if (request.Pictures.Count > 0)
         {
-            // Delete existing pictures from database
-            var existingPictures = await _unitOfWork.Pictures.GetByCommentIdAsync(commentId);
-
-            _unitOfWork.Pictures.RemoveRange(existingPictures);
-
-            // Add new pictures to database
-            var picture = images
-                .Select(i => new Picture
-                {
-                    Id = Guid.NewGuid(),
-                    CommentId = commentId,
-                    Link = i.Link,
-                    PublicId = i.PublicId,
-                })
-                .ToList();
-
-            _unitOfWork.Pictures.AddRange(picture);
+            await _unitOfWork
+                .Pictures.GetQuery()
+                .Where(p => request.Pictures.Contains(p.Link))
+                .ExecuteUpdateAsync(p => p.SetProperty(x => x.CommentId, commentId));
         }
 
         await _unitOfWork.SaveChangesAsync();
+        await _unitOfWork.CommitTransactionAsync();
 
-        return new UpdateCommentResponse
-        {
-            Id = commentId,
-            Content = request.Content,
-            Pictures = existingComment.Pictures.Select(p => p.Link).ToList(),
-            UpdatedAt = existingComment.UpdatedAt,
-        };
+        var res = await _unitOfWork
+            .Comments.GetQuery()
+            .AsNoTracking()
+            .Where(x => x.Id == commentId && x.DeletedAt == null)
+            .Select(c => new GetCommentsResponse
+            {
+                Id = c.Id,
+                Content = c.Content,
+                CreatedAt = c.CreatedAt,
+                UpdatedAt = c.UpdatedAt,
+                ParentCommentId = c.ParentCommentId,
+                PostId = c.PostId,
+
+                CommentCount = c.Replies.Count(),
+                LikeCount = c.CommentLikes.Count(),
+                IsLiked = c.CommentLikes.Any(l => l.AccountId == accountId),
+
+                Commenter = new AccountNameResponse
+                {
+                    Id = c.Account.Id,
+                    Username = c.Account.Username,
+                    DisplayName = c.Account.DisplayName,
+                    Avatar = c.Account.Picture != null ? c.Account.Picture.Link : string.Empty,
+                },
+
+                ReplyAccount =
+                    c.ReplyAccount != null
+                        ? new AccountNameResponse
+                        {
+                            Id = c.ReplyAccount.Id,
+                            Username = c.ReplyAccount.Username,
+                            DisplayName = c.ReplyAccount.DisplayName,
+                            Avatar =
+                                c.ReplyAccount.Picture != null
+                                    ? c.ReplyAccount.Picture.Link
+                                    : string.Empty,
+                        }
+                        : null,
+
+                Pictures = c.Pictures.Select(p => p.Link).ToList(),
+            })
+            .FirstAsync();
+
+        return res;
     }
 
     public async Task<bool> DeleteCommentAsync(Guid commentId, Guid accountId)
     {
         var existingComment = await _unitOfWork
             .Comments.GetQuery()
-            .Include(c => c.Pictures)
             .FirstOrDefaultAsync(c =>
                 c.Id == commentId && c.AccountId == accountId && c.DeletedAt == null
             );
@@ -278,16 +357,18 @@ public class CommentService : ICommentService
             return false;
         }
 
-        await _cloudinaryHelper.DeleteImages(
-            existingComment.Pictures.Select(p => p.PublicId).ToList()
-        );
+        await _unitOfWork.BeginTransactionAsync();
 
         existingComment.DeletedAt = DateTime.UtcNow;
 
-        var existingPictures = await _unitOfWork.Pictures.GetByCommentIdAsync(commentId);
-        _unitOfWork.Pictures.RemoveRange(existingPictures);
+        await _unitOfWork
+            .Pictures.GetQuery()
+            .Where(p => p.CommentId == commentId)
+            .ExecuteUpdateAsync(p => p.SetProperty(x => x.CommentId, (Guid?)null));
 
         await _unitOfWork.SaveChangesAsync();
+
+        await _unitOfWork.CommitTransactionAsync();
 
         return true;
     }

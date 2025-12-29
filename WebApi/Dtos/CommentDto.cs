@@ -21,12 +21,12 @@ public class GetCommentsResponse
     public AccountNameResponse Commenter { get; set; } = null!;
     public AccountNameResponse? ReplyAccount { get; set; } = null;
     public string Content { get; set; } = null!;
-    public List<string> CommentPictures { get; set; } = null!;
+    public List<string> Pictures { get; set; } = null!;
     public int LikeCount { get; set; }
     public int CommentCount { get; set; }
     public bool IsLiked { get; set; }
     public DateTime CreatedAt { get; set; }
-    public DateTime UpdatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; } = null;
 }
 
 public class CreateCommentRequest
@@ -35,7 +35,7 @@ public class CreateCommentRequest
     public Guid? ParentCommentId { get; set; }
     public Guid PostId { get; set; }
     public Guid? ReplyAccountId { get; set; }
-    public List<string> Images { get; set; } = new List<string>();
+    public List<string> Pictures { get; set; } = new List<string>();
 }
 
 public class CreateCommentResponse
@@ -53,9 +53,7 @@ public class CreateCommentResponse
 public class UpdateCommentRequest
 {
     public string Content { get; set; } = null!;
-    public List<IFormFile> Images { get; set; } = [];
-
-    public bool ClearImages { get; set; } = false; // true to clear all images
+    public List<string> Pictures { get; set; } = [];
 }
 
 public class UpdateCommentResponse

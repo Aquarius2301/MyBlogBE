@@ -46,16 +46,16 @@ public class CommentController : ControllerBase
         var user = _jwtHelper.GetAccountInfo();
         var res = await _service.GetChildCommentList(id, request.Cursor, user.Id, request.PageSize);
 
-        return res != null
+        return res.Item1 != null
             ? ApiResponse.Success(
                 new PaginationResponse
                 {
-                    Items = res,
-                    Cursor = res.Count > 0 ? res.Last().CreatedAt : null,
+                    Items = res.Item1,
+                    Cursor = res.Item2,
                     PageSize = request.PageSize,
                 }
             )
-            : ApiResponse.NotFound(_lang.Get("NoComment"));
+            : ApiResponse.NotFound("NoComment");
     }
 
     /// <summary>
@@ -78,7 +78,7 @@ public class CommentController : ControllerBase
 
         var res = await _service.LikeCommentAsync(id, user.Id);
 
-        return res ? ApiResponse.Success(res) : ApiResponse.NotFound(_lang.Get("NoComment"));
+        return res.HasValue ? ApiResponse.Success(res.Value) : ApiResponse.NotFound("NoComment");
     }
 
     /// <summary>
@@ -101,7 +101,7 @@ public class CommentController : ControllerBase
 
         var res = await _service.CancelLikeCommentAsync(id, user.Id);
 
-        return res ? ApiResponse.Success(res) : ApiResponse.NotFound(_lang.Get("NoComment"));
+        return res.HasValue ? ApiResponse.Success(res.Value) : ApiResponse.NotFound("NoComment");
     }
 
     /// <summary>
@@ -133,7 +133,9 @@ public class CommentController : ControllerBase
 
         var res = await _service.AddCommentAsync(user.Id, request);
 
-        return ApiResponse.Success(res);
+        return res != null
+            ? ApiResponse.Success(res)
+            : ApiResponse.BadRequest(_lang.Get("AddCommentFailed"));
     }
 
     /// <summary>
@@ -160,9 +162,7 @@ public class CommentController : ControllerBase
 
         var res = await _service.UpdateCommentAsync(id, request, user.Id);
 
-        return res != null
-            ? ApiResponse.Success(res)
-            : ApiResponse.NotFound(_lang.Get("NoComment"));
+        return res != null ? ApiResponse.Success(res) : ApiResponse.NotFound("NoComment");
     }
 
     /// <summary>
@@ -182,8 +182,6 @@ public class CommentController : ControllerBase
 
         var res = await _service.DeleteCommentAsync(id, user.Id);
 
-        return res
-            ? ApiResponse.Success(_lang.Get("DeleteCommentSuccess"))
-            : ApiResponse.NotFound(_lang.Get("NoComment"));
+        return res ? ApiResponse.Success("CommentDeleted") : ApiResponse.NotFound("NoComment");
     }
 }

@@ -378,33 +378,35 @@ public class PostService : IPostService
 
         var commmentsQuery = baseQuery.OrderByDescending(c => c.CreatedAt).Take(pageSize + 1);
 
-        var comments = commmentsQuery.Select(c => new GetCommentsResponse
-        {
-            Id = c.Id,
-            ParentCommentId = null,
-            PostId = c.PostId,
-            Content = c.Content,
-            Commenter = new AccountNameResponse
+        var comments = commmentsQuery
+            .Select(c => new GetCommentsResponse
             {
-                Id = c.Account.Id,
-                Username = c.Account.Username,
-                DisplayName = c.Account.DisplayName,
-                Avatar = c.Account.Picture != null ? c.Account.Picture.Link : "",
-                CreatedAt = c.Account.CreatedAt,
-                IsFollowing = c.Account.Followers.Any(f =>
-                    f.AccountId == accountId && f.FollowingId == c.AccountId
-                ),
-            },
-            ReplyAccount = null,
-            CreatedAt = c.CreatedAt,
-            UpdatedAt = c.UpdatedAt,
-            CommentPictures = c.Pictures.Select(cp => cp.Link).ToList(),
-            LikeCount = c.CommentLikes.Count(),
-            CommentCount = c.Replies.Count(),
-            IsLiked = c.CommentLikes.Any(cl => cl.AccountId == accountId),
-        });
+                Id = c.Id,
+                ParentCommentId = null,
+                PostId = c.PostId,
+                Content = c.Content,
+                Commenter = new AccountNameResponse
+                {
+                    Id = c.Account.Id,
+                    Username = c.Account.Username,
+                    DisplayName = c.Account.DisplayName,
+                    Avatar = c.Account.Picture != null ? c.Account.Picture.Link : "",
+                    CreatedAt = c.Account.CreatedAt,
+                    IsFollowing = c.Account.Followers.Any(f =>
+                        f.AccountId == accountId && f.FollowingId == c.AccountId
+                    ),
+                },
+                ReplyAccount = null,
+                CreatedAt = c.CreatedAt,
+                UpdatedAt = c.UpdatedAt,
+                Pictures = c.Pictures.Select(cp => cp.Link).ToList(),
+                LikeCount = c.CommentLikes.Count(),
+                CommentCount = c.Replies.Count(),
+                IsLiked = c.CommentLikes.Any(cl => cl.AccountId == accountId),
+            })
+            .ToList();
 
-        var hasNextPage = comments.Count() > pageSize;
+        var hasNextPage = comments.Count > pageSize;
 
         var result = comments.Take(pageSize).ToList();
 
@@ -447,7 +449,7 @@ public class PostService : IPostService
         {
             await _unitOfWork
                 .Pictures.GetQuery()
-                .Where(p => request.Pictures.Contains(p.Link) && p.AccountId == accountId)
+                .Where(p => request.Pictures.Contains(p.Link))
                 .ExecuteUpdateAsync(p => p.SetProperty(x => x.PostId, post.Id));
         }
 
