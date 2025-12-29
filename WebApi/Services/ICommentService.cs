@@ -25,7 +25,7 @@ public interface ICommentService
     /// <returns>
     /// A list of <see cref="GetChildCommentsResponse"/> objects representing child comments.
     /// </returns>
-    Task<List<GetChildCommentsResponse>> GetChildCommentList(
+    Task<List<GetCommentsResponse>> GetChildCommentList(
         Guid commentId,
         DateTime? cursor,
         Guid accountId,

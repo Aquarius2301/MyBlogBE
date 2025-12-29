@@ -19,8 +19,10 @@ public class AccountResponse
 public class AccountNameResponse
 {
     public Guid Id { get; set; }
+    public string Avatar { get; set; } = null!;
     public string Username { get; set; } = null!;
     public string DisplayName { get; set; } = null!;
+    public bool IsFollowing { get; set; } = false;
     public DateTime CreatedAt { get; set; }
 }
 

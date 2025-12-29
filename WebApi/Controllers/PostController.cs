@@ -42,12 +42,11 @@ public class PostController : ControllerBase
 
         var res = await _service.GetPostsListAsync(request.Cursor, user.Id, request.PageSize);
 
-        // Console.WriteLine(res.Count());
         return ApiResponse.Success(
             new PaginationResponse
             {
-                Items = res.OrderByDescending(x => x.Score).ToList(),
-                Cursor = res.Count() > 0 ? res.Last().CreatedAt : null,
+                Items = res.Item1,
+                Cursor = res.Item2,
                 PageSize = request.PageSize,
             }
         );
@@ -75,8 +74,8 @@ public class PostController : ControllerBase
         return ApiResponse.Success(
             new PaginationResponse
             {
-                Items = res,
-                Cursor = res.Count() > 0 ? res.Last().CreatedAt : null,
+                Items = res.Item1,
+                Cursor = res.Item2,
                 PageSize = request.PageSize,
             }
         );
@@ -104,8 +103,8 @@ public class PostController : ControllerBase
         return ApiResponse.Success(
             new PaginationResponse
             {
-                Items = res,
-                Cursor = res.Count() > 0 ? res.Last().CreatedAt : null,
+                Items = res.Item1,
+                Cursor = res.Item2,
                 PageSize = request.PageSize,
             }
         );
@@ -131,7 +130,7 @@ public class PostController : ControllerBase
 
         var res = await _service.GetPostByLinkAsync(link, user.Id);
 
-        return res != null ? ApiResponse.Success(res) : ApiResponse.NotFound(_lang.Get("NoPost"));
+        return res != null ? ApiResponse.Success(res) : ApiResponse.NotFound("NoPost");
     }
 
     /// <summary>
@@ -154,7 +153,7 @@ public class PostController : ControllerBase
 
         var res = await _service.LikePostAsync(id, user.Id);
 
-        return res ? ApiResponse.Success() : ApiResponse.NotFound(_lang.Get("NoPost"));
+        return res != null ? ApiResponse.Success(res) : ApiResponse.NotFound("NoPost");
     }
 
     /// <summary>
@@ -177,7 +176,7 @@ public class PostController : ControllerBase
 
         var res = await _service.CancelLikePostAsync(id, user.Id);
 
-        return res ? ApiResponse.Success() : ApiResponse.NotFound(_lang.Get("NoPost"));
+        return res != null ? ApiResponse.Success(res) : ApiResponse.NotFound("NoPost");
     }
 
     /// <summary>
@@ -208,16 +207,16 @@ public class PostController : ControllerBase
             request.PageSize
         );
 
-        return res != null
+        return res.Item1 != null
             ? ApiResponse.Success(
                 new PaginationResponse
                 {
-                    Items = res.OrderByDescending(c => c.Score).ToList(),
-                    Cursor = res.Count() > 0 ? res.Last().CreatedAt : null,
+                    Items = res.Item1,
+                    Cursor = res.Item2,
                     PageSize = request.PageSize,
                 }
             )
-            : ApiResponse.NotFound(_lang.Get("NoPost"));
+            : ApiResponse.NotFound("NoPost");
     }
 
     /// <summary>
@@ -234,18 +233,16 @@ public class PostController : ControllerBase
     [CheckStatusHelper(BusinessObject.Enums.StatusType.Active)]
     public async Task<IActionResult> AddPost([FromBody] CreatePostRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Content))
+        if (string.IsNullOrWhiteSpace(request.Content) || request.Pictures.Count == 0)
         {
-            return ApiResponse.BadRequest(_lang.Get("PostEmpty"));
+            return ApiResponse.BadRequest("PostAndPictureEmpty");
         }
 
         var user = _jwtHelper.GetAccountInfo();
 
         var res = await _service.AddPostAsync(request, user.Id);
 
-        return res == null
-            ? ApiResponse.BadRequest(_lang.Get("NoAccount"))
-            : ApiResponse.Created(res, _lang.Get("PostCreated"));
+        return res == null ? ApiResponse.BadRequest("NoAccount") : ApiResponse.Created(res);
     }
 
     [HttpPut("{id}")]
@@ -255,18 +252,16 @@ public class PostController : ControllerBase
     ])]
     public async Task<IActionResult> UpdatePost(Guid id, [FromBody] UpdatePostRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Content))
+        if (string.IsNullOrWhiteSpace(request.Content) || request.Pictures.Count == 0)
         {
-            return ApiResponse.BadRequest(_lang.Get("PostEmpty"));
+            return ApiResponse.BadRequest("PostAndPictureEmpty");
         }
 
         var user = _jwtHelper.GetAccountInfo();
 
         var res = await _service.UpdatePostAsync(request, id, user.Id);
 
-        return res == null
-            ? ApiResponse.NotFound(_lang.Get("NoPost"))
-            : ApiResponse.Success(res, _lang.Get("PostUpdated"));
+        return res == null ? ApiResponse.BadRequest("NoAccount") : ApiResponse.Created(res);
     }
 
     [HttpDelete("{id}")]
@@ -280,18 +275,6 @@ public class PostController : ControllerBase
 
         var res = await _service.DeletePostAsync(id, user.Id);
 
-        return res
-            ? ApiResponse.Success(message: _lang.Get("PostDeleted"))
-            : ApiResponse.NotFound(_lang.Get("NoPost"));
-    }
-
-    [HttpPost("upload")]
-    public async Task<IActionResult> UploadPostImage([FromForm] UploadPostImageRequest request)
-    {
-        var user = _jwtHelper.GetAccountInfo();
-
-        var res = await _service.UploadPostImagesAsync(request, user.Id);
-
-        return ApiResponse.Success(res);
+        return res ? ApiResponse.Success("PostDeleted") : ApiResponse.NotFound("NoPost");
     }
 }

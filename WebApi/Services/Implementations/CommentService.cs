@@ -23,7 +23,7 @@ public class CommentService : ICommentService
         return await _unitOfWork.Comments.GetByIdAsync(commentId);
     }
 
-    public async Task<List<GetChildCommentsResponse>> GetChildCommentList(
+    public async Task<List<GetCommentsResponse>> GetChildCommentList(
         Guid commentId,
         DateTime? cursor,
         Guid accountId,
@@ -34,18 +34,29 @@ public class CommentService : ICommentService
             .Comments.GetQuery()
             .Where(c =>
                 c.ParentCommentId == commentId
+                && c.ReplyAccountId != null
                 && (cursor == null || c.CreatedAt > cursor)
                 && c.DeletedAt == null
             )
-            .Select(c => new GetChildCommentsResponse
+            .Select(c => new GetCommentsResponse
             {
                 Id = c.Id,
                 Content = c.Content,
-                AccountId = c.AccountId,
-                AccountName = c.Account.DisplayName,
-                AccountAvatar = c.Account.Picture != null ? c.Account.Picture.Link : "",
-                ReplyAccountName =
-                    c.ReplyAccount != null ? c.ReplyAccount.DisplayName : string.Empty,
+                Commenter = new AccountNameResponse
+                {
+                    Id = c.Account.Id,
+                    Username = c.Account.Username,
+                    DisplayName = c.Account.DisplayName,
+                    Avatar = c.Account.Picture != null ? c.Account.Picture.Link : string.Empty,
+                },
+                ReplyAccount = new AccountNameResponse
+                {
+                    Id = c.ReplyAccount.Id,
+                    Username = c.ReplyAccount.Username,
+                    DisplayName = c.ReplyAccount.DisplayName,
+                    Avatar =
+                        c.ReplyAccount.Picture != null ? c.ReplyAccount.Picture.Link : string.Empty,
+                },
                 CreatedAt = c.CreatedAt,
                 CommentPictures = c.Pictures.Select(cp => cp.Link).ToList(),
                 LikeCount = c.CommentLikes.Count(),

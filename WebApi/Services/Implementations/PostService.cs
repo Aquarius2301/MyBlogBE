@@ -12,201 +12,297 @@ public class PostService : IPostService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly BaseSettings _settings;
-    private readonly CloudinaryHelper _cloudinaryHelper;
 
-    public PostService(
-        IUnitOfWork unitOfWork,
-        IOptions<BaseSettings> options,
-        CloudinaryHelper cloudinaryHelper
-    )
+    public PostService(IUnitOfWork unitOfWork, IOptions<BaseSettings> options)
     {
         _unitOfWork = unitOfWork;
         _settings = options.Value;
-        _cloudinaryHelper = cloudinaryHelper;
     }
 
-    public async Task<Post?> GetByIdAsync(Guid commentId)
-    {
-        return await _unitOfWork.Posts.GetByIdAsync(commentId);
-    }
-
-    public async Task<List<GetPostsResponse>> GetPostsListAsync(
+    public async Task<(List<GetPostsResponse>, DateTime?)> GetPostsListAsync(
         DateTime? cursor,
         Guid accountId,
         int pageSize
     )
     {
-        var query = _unitOfWork
+        var baseQuery = _unitOfWork
             .Posts.GetQuery()
-            .Where(x => x.DeletedAt == null && (cursor == null || x.CreatedAt < cursor))
-            .Select(x => new GetPostsResponse
+            .AsNoTracking()
+            .Where(p => p.DeletedAt == null && (cursor == null || p.CreatedAt < cursor));
+
+        var postsQuery = baseQuery.OrderByDescending(p => p.CreatedAt).Take(pageSize + 1);
+
+        var posts = await postsQuery
+            .Select(p => new GetPostsResponse
             {
-                Id = x.Id,
-                Link = x.Link,
-                Content = x.Content,
-                AccountId = x.AccountId,
-                AccountName = x.Account.DisplayName,
-                AccountUsername = x.Account.Username,
-                AccountAvatar = x.Account.Picture != null ? x.Account.Picture.Link : "",
-                IsOwner = x.AccountId == accountId,
-                CreatedAt = x.CreatedAt,
-                PostPictures = x.Pictures.Select(pp => pp.Link).ToList(),
-                LatestComment = x
-                    .Comments.Where(x => x.ParentCommentId == null)
+                Id = p.Id,
+                Link = p.Link,
+                Content = p.Content,
+                CreatedAt = p.CreatedAt,
+                UpdatedAt = p.UpdatedAt,
+
+                IsOwner = p.AccountId == accountId,
+
+                LikeCount = p.PostLikes.Count(),
+                CommentCount = p.Comments.Count(),
+
+                IsLiked = p.PostLikes.Any(l => l.AccountId == accountId),
+
+                Author = new AccountNameResponse
+                {
+                    Id = p.Account.Id,
+                    Username = p.Account.Username,
+                    DisplayName = p.Account.DisplayName,
+                    Avatar = p.Account.Picture != null ? p.Account.Picture.Link : "",
+                    IsFollowing = p.Account.Followers.Any(f =>
+                        f.AccountId == accountId && f.FollowingId == p.AccountId
+                    ),
+                    CreatedAt = p.Account.CreatedAt,
+                },
+
+                PostPictures = p.Pictures.Select(pic => pic.Link).ToList(),
+
+                LatestComment = p
+                    .Comments.Where(c => c.ParentCommentId == null)
                     .OrderByDescending(c => c.CreatedAt)
                     .Select(c => new PostLatestComment
                     {
-                        Avatar = c.Account.Picture != null ? c.Account.Picture.Link : "",
-                        Username = c.Account.Username,
-                        DisplayName = c.Account.DisplayName,
                         Content = c.Content,
                         CreatedAt = c.CreatedAt,
+                        Commenter = new AccountNameResponse
+                        {
+                            Id = c.Account.Id,
+                            Username = c.Account.Username,
+                            DisplayName = c.Account.DisplayName,
+                            Avatar = c.Account.Picture != null ? c.Account.Picture.Link : "",
+                            CreatedAt = c.Account.CreatedAt,
+                            IsFollowing = c.Account.Followers.Any(f =>
+                                f.AccountId == accountId && f.FollowingId == c.Account.Id
+                            ),
+                        },
                     })
                     .FirstOrDefault(),
-                LikeCount = x.PostLikes.Count(),
-                CommentCount = x.Comments.Count(),
-                IsFollowing = x.Account.Followers.Any(f =>
-                    f.AccountId == accountId && f.FollowingId == x.AccountId
-                ),
-                IsLiked = x.PostLikes.Any(pl => pl.PostId == x.Id && pl.AccountId == accountId),
             })
-            .OrderByDescending(x => x.CreatedAt)
-            .Take(pageSize);
+            .ToListAsync();
 
-        var posts = await query.ToListAsync();
+        var hasNextPage = posts.Count > pageSize;
 
-        return posts.ToList();
+        var result = posts.Take(pageSize).OrderByDescending(p => p.Score).ToList();
+
+        var nextCursor = hasNextPage ? result.Last().CreatedAt : (DateTime?)null;
+
+        return (result, nextCursor);
     }
 
-    public async Task<List<GetPostsResponse>> GetMyPostsListAsync(
+    public async Task<(List<GetPostsResponse>, DateTime?)> GetMyPostsListAsync(
         DateTime? cursor,
         Guid accountId,
         int pageSize
     )
     {
-        var query = _unitOfWork
+        var baseQuery = _unitOfWork
             .Posts.GetQuery()
-            .Where(x =>
-                x.DeletedAt == null
-                && x.AccountId == accountId
-                && (cursor == null ? x.CreatedAt < DateTime.UtcNow : x.CreatedAt < cursor)
-            )
-            .Select(x => new GetPostsResponse
+            .AsNoTracking()
+            .Where(p =>
+                p.DeletedAt == null
+                && p.AccountId == accountId
+                && (cursor == null || p.CreatedAt < cursor)
+            );
+
+        var postsQuery = baseQuery.OrderByDescending(p => p.CreatedAt).Take(pageSize + 1);
+
+        var posts = await postsQuery
+            .Select(p => new GetPostsResponse
             {
-                Id = x.Id,
-                Link = x.Link,
-                Content = x.Content,
-                AccountId = x.AccountId,
-                AccountName = x.Account.DisplayName,
-                AccountUsername = x.Account.Username,
-                AccountAvatar = x.Account.Picture != null ? x.Account.Picture.Link : "",
-                IsOwner = true,
-                CreatedAt = x.CreatedAt,
-                PostPictures = x.Pictures.Select(pp => pp.Link).ToList(),
-                LatestComment = x
-                    .Comments.Where(x => x.ParentCommentId == null)
+                Id = p.Id,
+                Link = p.Link,
+                Content = p.Content,
+                CreatedAt = p.CreatedAt,
+                UpdatedAt = p.UpdatedAt,
+
+                IsOwner = p.AccountId == accountId,
+
+                LikeCount = p.PostLikes.Count(),
+                CommentCount = p.Comments.Count(),
+
+                IsLiked = p.PostLikes.Any(l => l.AccountId == accountId),
+
+                Author = new AccountNameResponse
+                {
+                    Id = p.Account.Id,
+                    Username = p.Account.Username,
+                    DisplayName = p.Account.DisplayName,
+                    Avatar = p.Account.Picture != null ? p.Account.Picture.Link : "",
+                    CreatedAt = p.Account.CreatedAt,
+                    IsFollowing = false, // The owner cannot follow themselves
+                },
+
+                PostPictures = p.Pictures.Select(pic => pic.Link).ToList(),
+
+                LatestComment = p
+                    .Comments.Where(c => c.ParentCommentId == null)
                     .OrderByDescending(c => c.CreatedAt)
                     .Select(c => new PostLatestComment
                     {
-                        Username = c.Account.Username,
-                        DisplayName = c.Account.DisplayName,
                         Content = c.Content,
                         CreatedAt = c.CreatedAt,
+                        Commenter = new AccountNameResponse
+                        {
+                            Id = c.Account.Id,
+                            Username = c.Account.Username,
+                            DisplayName = c.Account.DisplayName,
+                            Avatar = c.Account.Picture != null ? c.Account.Picture.Link : "",
+                            CreatedAt = c.Account.CreatedAt,
+                            IsFollowing = c.Account.Followers.Any(f =>
+                                f.AccountId == accountId && f.FollowingId == c.Account.Id
+                            ),
+                        },
                     })
                     .FirstOrDefault(),
-                LikeCount = x.PostLikes.Count(),
-                CommentCount = x.Comments.Count(),
-                IsLiked = x.PostLikes.Any(pl => pl.PostId == x.Id && pl.AccountId == accountId),
             })
-            .OrderByDescending(x => x.CreatedAt)
-            .Take(pageSize);
+            .ToListAsync();
 
-        return await query.ToListAsync();
+        var hasNextPage = posts.Count > pageSize;
+
+        var result = posts.Take(pageSize).OrderByDescending(p => p.Score).ToList();
+
+        var nextCursor = hasNextPage ? result.Last().CreatedAt : (DateTime?)null;
+
+        return (result, nextCursor);
     }
 
-    public async Task<List<GetPostsResponse>> GetPostsByUsername(
+    public async Task<(List<GetPostsResponse>, DateTime?)> GetPostsByUsername(
         string username,
         DateTime? cursor,
         Guid accountId,
         int pageSize
     )
     {
-        var query = _unitOfWork
+        var baseQuery = _unitOfWork
             .Posts.GetQuery()
-            .Where(x =>
-                x.DeletedAt == null
-                && x.Account.Username == username
-                && (cursor == null ? x.CreatedAt < DateTime.UtcNow : x.CreatedAt < cursor)
-            )
-            .Select(x => new GetPostsResponse
+            .AsNoTracking()
+            .Where(p =>
+                p.DeletedAt == null
+                && p.Account.Username == username
+                && (cursor == null || p.CreatedAt < cursor)
+            );
+
+        var postsQuery = baseQuery.OrderByDescending(p => p.CreatedAt).Take(pageSize + 1);
+
+        var posts = await postsQuery
+            .Select(p => new GetPostsResponse
             {
-                Id = x.Id,
-                Link = x.Link,
-                Content = x.Content,
-                AccountId = x.AccountId,
-                AccountName = x.Account.DisplayName,
-                AccountUsername = x.Account.Username,
-                AccountAvatar = x.Account.Picture != null ? x.Account.Picture.Link : "",
-                IsOwner = x.AccountId == accountId,
-                CreatedAt = x.CreatedAt,
-                PostPictures = x.Pictures.Select(pp => pp.Link).ToList(),
-                LatestComment = x
-                    .Comments.Where(x => x.ParentCommentId == null)
+                Id = p.Id,
+                Link = p.Link,
+                Content = p.Content,
+                CreatedAt = p.CreatedAt,
+                UpdatedAt = p.UpdatedAt,
+
+                IsOwner = p.AccountId == accountId,
+
+                LikeCount = p.PostLikes.Count(),
+                CommentCount = p.Comments.Count(),
+
+                IsLiked = p.PostLikes.Any(l => l.AccountId == accountId),
+
+                Author = new AccountNameResponse
+                {
+                    Id = p.Account.Id,
+                    Username = p.Account.Username,
+                    DisplayName = p.Account.DisplayName,
+                    Avatar = p.Account.Picture != null ? p.Account.Picture.Link : "",
+                    CreatedAt = p.Account.CreatedAt,
+                    IsFollowing = p.Account.Followers.Any(f =>
+                        f.AccountId == accountId && f.FollowingId == p.AccountId
+                    ),
+                },
+
+                PostPictures = p.Pictures.Select(pic => pic.Link).ToList(),
+
+                LatestComment = p
+                    .Comments.Where(c => c.ParentCommentId == null)
                     .OrderByDescending(c => c.CreatedAt)
                     .Select(c => new PostLatestComment
                     {
-                        Username = c.Account.Username,
-                        DisplayName = c.Account.DisplayName,
                         Content = c.Content,
                         CreatedAt = c.CreatedAt,
+                        Commenter = new AccountNameResponse
+                        {
+                            Id = c.Account.Id,
+                            Username = c.Account.Username,
+                            DisplayName = c.Account.DisplayName,
+                            Avatar = c.Account.Picture != null ? c.Account.Picture.Link : "",
+                            CreatedAt = c.Account.CreatedAt,
+                            IsFollowing = c.Account.Followers.Any(f =>
+                                f.AccountId == accountId && f.FollowingId == c.Account.Id
+                            ),
+                        },
                     })
                     .FirstOrDefault(),
-                LikeCount = x.PostLikes.Count(),
-                CommentCount = x.Comments.Count(),
-                IsLiked = x.PostLikes.Any(pl => pl.PostId == x.Id && pl.AccountId == accountId),
             })
-            .OrderByDescending(x => x.CreatedAt)
-            .Take(pageSize);
+            .ToListAsync();
 
-        return await query.ToListAsync();
+        var hasNextPage = posts.Count > pageSize;
+
+        var result = posts.Take(pageSize).OrderByDescending(p => p.Score).ToList();
+
+        var nextCursor = hasNextPage ? result.Last().CreatedAt : (DateTime?)null;
+
+        return (result, nextCursor);
     }
 
     public async Task<GetPostDetailResponse?> GetPostByLinkAsync(string link, Guid accountId)
     {
-        var post = await _unitOfWork
+        return await _unitOfWork
             .Posts.GetQuery()
-            .Where(x => x.Link == link && x.DeletedAt == null)
-            .Select(x => new GetPostDetailResponse
+            .AsNoTracking()
+            .Where(p => p.DeletedAt == null && p.Link == link)
+            .Select(p => new GetPostDetailResponse
             {
-                Id = x.Id,
-                Link = x.Link,
-                Content = x.Content,
-                AccountId = x.AccountId,
-                AccountName = x.Account.DisplayName,
-                AccountAvatar = x.Account.Picture != null ? x.Account.Picture.Link : "",
-                IsOwner = x.AccountId == accountId,
-                CreatedAt = x.CreatedAt,
-                PostPictures = x.Pictures.Select(pp => pp.Link).ToList(),
-                LikeCount = x.PostLikes.Count(),
-                CommentCount = x.Comments.Count(),
-                IsLiked = x.PostLikes.Any(pl => pl.PostId == x.Id && pl.AccountId == accountId),
+                Id = p.Id,
+                Link = p.Link,
+                Content = p.Content,
+                CreatedAt = p.CreatedAt,
+
+                IsOwner = p.AccountId == accountId,
+                IsLiked = p.PostLikes.Any(l => l.AccountId == accountId),
+
+                LikeCount = p.PostLikes.Count(),
+                CommentCount = p.Comments.Count(),
+
+                PostPictures = p.Pictures.Select(pic => pic.Link).ToList(),
+
+                Author = new AccountNameResponse
+                {
+                    Id = p.Account.Id,
+                    Username = p.Account.Username,
+                    DisplayName = p.Account.DisplayName,
+                    Avatar = p.Account.Picture != null ? p.Account.Picture.Link : "",
+                    CreatedAt = p.Account.CreatedAt,
+                    IsFollowing = p.Account.Followers.Any(f =>
+                        f.AccountId == accountId && f.FollowingId == p.AccountId
+                    ),
+                },
             })
             .FirstOrDefaultAsync();
-
-        return post;
     }
 
-    public async Task<bool> LikePostAsync(Guid postId, Guid accountId)
+    public async Task<int?> LikePostAsync(Guid postId, Guid accountId)
     {
-        var existingPost = await _unitOfWork.Posts.GetByIdAsync(postId);
-        if (existingPost == null)
-        {
-            return false;
-        }
+        var postExists = await _unitOfWork
+            .Posts.GetQuery()
+            .AsNoTracking()
+            .AnyAsync(p => p.Id == postId && p.DeletedAt == null);
 
-        var existingLike = await _unitOfWork.PostLikes.GetByAccountAndPostAsync(accountId, postId);
+        if (!postExists)
+            return null;
 
-        if (existingLike == null)
+        var alreadyLiked = await _unitOfWork
+            .PostLikes.GetQuery()
+            .AsNoTracking()
+            .AnyAsync(l => l.PostId == postId && l.AccountId == accountId);
+
+        if (!alreadyLiked)
         {
             _unitOfWork.PostLikes.Add(
                 new PostLike
@@ -216,86 +312,117 @@ public class PostService : IPostService
                     CreatedAt = DateTime.UtcNow,
                 }
             );
+
             await _unitOfWork.SaveChangesAsync();
         }
-        return true;
+
+        return await _unitOfWork
+            .PostLikes.GetQuery()
+            .AsNoTracking()
+            .CountAsync(l => l.PostId == postId);
     }
 
-    public async Task<bool> CancelLikePostAsync(Guid postId, Guid accountId)
+    public async Task<int?> CancelLikePostAsync(Guid postId, Guid accountId)
     {
-        var existingPost = await _unitOfWork.Posts.GetByIdAsync(postId);
-        if (existingPost == null)
-        {
-            return false;
-        }
+        var postExists = await _unitOfWork
+            .Posts.GetQuery()
+            .AsNoTracking()
+            .AnyAsync(p => p.Id == postId && p.DeletedAt == null);
 
-        var existingLike = await _unitOfWork.PostLikes.GetByAccountAndPostAsync(accountId, postId);
+        if (!postExists)
+            return null;
 
-        if (existingLike != null)
+        var alreadyLiked = await _unitOfWork
+            .PostLikes.GetQuery()
+            .FirstOrDefaultAsync(l => l.PostId == postId && l.AccountId == accountId);
+
+        if (alreadyLiked != null)
         {
-            _unitOfWork.PostLikes.Remove(existingLike);
+            _unitOfWork.PostLikes.Remove(alreadyLiked);
+
             await _unitOfWork.SaveChangesAsync();
         }
 
-        return true;
+        return await _unitOfWork
+            .PostLikes.GetQuery()
+            .AsNoTracking()
+            .CountAsync(l => l.PostId == postId);
     }
 
-    public async Task<List<GetCommentsResponse>?> GetPostCommentsList(
+    public async Task<(List<GetCommentsResponse>?, DateTime?)> GetPostCommentsList(
         Guid postId,
         DateTime? cursor,
         Guid accountId,
         int pageSize
     )
     {
-        var existingPost = await _unitOfWork.Posts.GetByIdAsync(postId);
-        if (existingPost == null)
+        var existingPost = await _unitOfWork
+            .Posts.GetQuery()
+            .AsNoTracking()
+            .AnyAsync(p => p.DeletedAt == null && p.Id == postId);
+
+        if (!existingPost)
         {
-            return null;
+            return (null, null);
         }
 
-        var comments = await _unitOfWork
+        var baseQuery = _unitOfWork
             .Comments.GetQuery()
+            .AsNoTracking()
             .Where(c =>
                 c.PostId == postId
                 && c.ParentCommentId == null
                 && (cursor == null || c.CreatedAt < cursor)
                 && c.DeletedAt == null
-            )
-            .Select(c => new GetCommentsResponse
-            {
-                Id = c.Id,
-                Content = c.Content,
-                AccountId = c.AccountId,
-                AccountName = c.Account.DisplayName,
-                AccountAvatar = c.Account.Picture != null ? c.Account.Picture.Link : "",
-                CreatedAt = c.CreatedAt,
-                CommentPictures = c.Pictures.Select(cp => cp.Link).ToList(),
-                LikeCount = c.CommentLikes.Count(),
-                CommentCount = c.Replies.Count(),
-                IsLiked = c.CommentLikes.Any(cl => cl.AccountId == accountId),
-            })
-            .OrderByDescending(c => c.CreatedAt)
-            .Take(pageSize)
-            .ToListAsync();
+            );
 
-        return comments;
+        var commmentsQuery = baseQuery.OrderByDescending(c => c.CreatedAt).Take(pageSize + 1);
+
+        var comments = commmentsQuery.Select(c => new GetCommentsResponse
+        {
+            Id = c.Id,
+            ParentCommentId = null,
+            PostId = c.PostId,
+            Content = c.Content,
+            Commenter = new AccountNameResponse
+            {
+                Id = c.Account.Id,
+                Username = c.Account.Username,
+                DisplayName = c.Account.DisplayName,
+                Avatar = c.Account.Picture != null ? c.Account.Picture.Link : "",
+                CreatedAt = c.Account.CreatedAt,
+                IsFollowing = c.Account.Followers.Any(f =>
+                    f.AccountId == accountId && f.FollowingId == c.AccountId
+                ),
+            },
+            ReplyAccount = null,
+            CreatedAt = c.CreatedAt,
+            UpdatedAt = c.UpdatedAt,
+            CommentPictures = c.Pictures.Select(cp => cp.Link).ToList(),
+            LikeCount = c.CommentLikes.Count(),
+            CommentCount = c.Replies.Count(),
+            IsLiked = c.CommentLikes.Any(cl => cl.AccountId == accountId),
+        });
+
+        var hasNextPage = comments.Count() > pageSize;
+
+        var result = comments.Take(pageSize).ToList();
+
+        var nextCursor = hasNextPage ? result.Last().CreatedAt : (DateTime?)null;
+
+        return (result, nextCursor);
     }
 
-    public async Task<CreatePostResponse?> AddPostAsync(CreatePostRequest request, Guid accountId)
+    public async Task<GetPostsResponse?> AddPostAsync(CreatePostRequest request, Guid accountId)
     {
-        // 1. Tối ưu truy vấn Account: Dùng AsNoTracking và Select để chỉ lấy dữ liệu cần thiết
         var existingAccount = await _unitOfWork
             .Accounts.GetQuery()
-            .AsNoTracking() // Không cần theo dõi thay đổi vì chỉ để đọc
-            .Where(a =>
-                a.Id == accountId
-                && a.DeletedAt == null
-                && a.Status == BusinessObject.Enums.StatusType.Active
-            )
+            .AsNoTracking()
+            .Where(a => a.DeletedAt == null && a.Id == accountId)
             .Select(a => new
             {
+                a.Username,
                 a.DisplayName,
-                // Xử lý null check ngay trong query để tránh lỗi
                 Avatar = a.Picture != null ? a.Picture.Link : "",
             })
             .FirstOrDefaultAsync();
@@ -305,64 +432,56 @@ public class PostService : IPostService
             return null;
         }
 
-        // 2. Generate Link (Giữ nguyên logic nhưng đảm bảo field Link trong DB đã đánh Index)
-        string link;
-        do
+        var post = new Post
         {
-            link = StringHelper.GenerateRandomString(_settings.TokenLength);
-        } while (await _unitOfWork.Posts.GetByLinkAsync(link) != null);
-
-        var createTime = DateTime.UtcNow;
-        var postId = Guid.NewGuid();
-
-        var newPost = new Post
-        {
-            Id = postId,
-            Link = link,
+            Id = Guid.NewGuid(),
+            Link = StringHelper.GenerateRandomString(_settings.TokenLength),
             Content = request.Content,
             AccountId = accountId,
-            CreatedAt = createTime,
+            CreatedAt = DateTime.UtcNow,
         };
 
-        _unitOfWork.Posts.Add(newPost);
+        _unitOfWork.Posts.Add(post);
 
-        // 3. Tối ưu xử lý Pictures: Thay thế vòng lặp foreach (N+1 query) bằng 1 query duy nhất
-        // Giả sử request.Pictures là List<string> chứa Link của ảnh
-        if (request.Pictures != null && request.Pictures.Any())
+        if (request.Pictures.Count != 0)
         {
-            var pictures = await _unitOfWork
+            await _unitOfWork
                 .Pictures.GetQuery()
-                .Where(p => request.Pictures.Contains(p.Link))
-                .ToListAsync();
-
-            foreach (var picture in pictures)
-            {
-                picture.PostId = postId;
-                // EF Core tự động track changes cho các entity này
-            }
-
-            // Lưu ý: Nếu logic yêu cầu bắt buộc tất cả ảnh trong request phải tồn tại,
-            // bạn cần check: if (pictures.Count != request.Pictures.Count) -> throw Exception
+                .Where(p => request.Pictures.Contains(p.Link) && p.AccountId == accountId)
+                .ExecuteUpdateAsync(p => p.SetProperty(x => x.PostId, post.Id));
         }
 
-        // 4. SaveChanges một lần duy nhất cho cả Post và Pictures
         await _unitOfWork.SaveChangesAsync();
 
-        // 5. Trả về kết quả từ dữ liệu có sẵn trong memory, KHÔNG query lại DB
-        return new CreatePostResponse
+        return new GetPostsResponse
         {
-            Id = newPost.Id,
-            AccountAvatar = existingAccount.Avatar,
-            AccountName = existingAccount.DisplayName,
-            Link = newPost.Link,
-            Content = newPost.Content,
-            // Dùng lại list pictures đã lấy ở bước 3, không cần query lại
-            Pictures = request.Pictures ?? new List<string>(),
-            CreatedAt = createTime,
+            Id = post.Id,
+            Link = post.Link,
+            Content = post.Content,
+            CreatedAt = post.CreatedAt,
+            UpdatedAt = post.UpdatedAt,
+
+            IsOwner = true,
+            IsLiked = false,
+
+            LikeCount = 0,
+            CommentCount = 0,
+
+            PostPictures = request.Pictures ?? [],
+
+            Author = new AccountNameResponse
+            {
+                Id = accountId,
+                Username = existingAccount.Username,
+                DisplayName = existingAccount.DisplayName,
+                Avatar = existingAccount.Avatar,
+                CreatedAt = post.CreatedAt,
+                IsFollowing = false,
+            },
         };
     }
 
-    public async Task<UpdatePostResponse?> UpdatePostAsync(
+    public async Task<GetPostsResponse?> UpdatePostAsync(
         UpdatePostRequest request,
         Guid postId,
         Guid accountId
@@ -370,130 +489,101 @@ public class PostService : IPostService
     {
         var existingPost = await _unitOfWork
             .Posts.GetQuery()
-            .Include(p => p.Pictures)
-            .Include(p => p.Account)
-                .ThenInclude(a => a.Picture)
-            .FirstOrDefaultAsync(p =>
-                p.Id == postId && p.AccountId == accountId && p.DeletedAt == null
-            );
+            .Where(p => p.Id == postId && p.AccountId == accountId && p.DeletedAt == null)
+            .Select(p => new
+            {
+                p.Id,
+                p.Link,
+                p.CreatedAt,
+            })
+            .FirstOrDefaultAsync();
+
         if (existingPost == null)
         {
             return null;
         }
 
-        // var pictureLinks = new List<ImageDto>();
-
-        // if (request.ClearPictures)
-        // {
-        var existingPictures = await _unitOfWork.Pictures.GetByPostIdAsync(postId);
-
-        foreach (var picture in existingPictures)
-        {
-            picture.PostId = null;
-        }
-
-        // _unitOfWork.Pictures.AddRange(
-        //     request.Pictures.Select(pl => new Picture
-        //     {
-        //         Id = Guid.NewGuid(),
-        //         PostId = existingPost.Id,
-        //         PublicId = pl.PublicId,
-        //         Link = pl.Link,
-        //     })
-        // );
-        // }
-
         var updateTime = DateTime.UtcNow;
 
-        existingPost.Content = request.Content;
-        existingPost.UpdatedAt = updateTime;
+        await _unitOfWork
+            .Posts.GetQuery()
+            .Where(p => p.Id == postId)
+            .ExecuteUpdateAsync(setters =>
+                setters
+                    .SetProperty(p => p.Content, request.Content)
+                    .SetProperty(p => p.UpdatedAt, updateTime)
+            );
 
-        if (request.Pictures != null && request.Pictures.Any())
+        await _unitOfWork
+            .Pictures.GetQuery()
+            .Where(p => p.PostId == postId)
+            .ExecuteUpdateAsync(p => p.SetProperty(x => x.PostId, (Guid?)null));
+
+        if (request.Pictures?.Any() == true)
         {
-            var pictures = await _unitOfWork
+            await _unitOfWork
                 .Pictures.GetQuery()
-                .Where(p => request.Pictures.Contains(p.Link))
-                .ToListAsync();
-
-            foreach (var picture in pictures)
-            {
-                picture.PostId = postId;
-            }
+                .Where(p => request.Pictures.Contains(p.Link) && p.AccountId == accountId)
+                .ExecuteUpdateAsync(p => p.SetProperty(x => x.PostId, postId));
         }
+        var author = await _unitOfWork
+            .Accounts.GetQuery()
+            .AsNoTracking()
+            .Where(a => a.Id == accountId)
+            .Select(a => new
+            {
+                a.Username,
+                a.DisplayName,
+                Avatar = a.Picture != null ? a.Picture.Link : "",
+                a.CreatedAt,
+            })
+            .FirstAsync();
 
-        await _unitOfWork.SaveChangesAsync();
-
-        return new UpdatePostResponse
+        return new GetPostsResponse
         {
             Id = existingPost.Id,
-            AccountAvatar =
-                existingPost.Account.Picture != null ? existingPost.Account.Picture.Link : "",
-            AccountName = existingPost.Account.DisplayName,
             Link = existingPost.Link,
             Content = request.Content,
-            PostPictures = existingPost.Pictures.Select(x => x.Link).ToList(),
+            CreatedAt = existingPost.CreatedAt,
             UpdatedAt = updateTime,
+
+            IsOwner = true,
+            IsLiked = false,
+
+            LikeCount = 0,
+            CommentCount = 0,
+
+            PostPictures = request.Pictures ?? [],
+
+            Author = new AccountNameResponse
+            {
+                Id = accountId,
+                Username = author.Username,
+                DisplayName = author.DisplayName,
+                Avatar = author.Avatar,
+                CreatedAt = author.CreatedAt,
+                IsFollowing = false,
+            },
         };
     }
 
     public async Task<bool> DeletePostAsync(Guid postId, Guid accountId)
     {
-        var existingPost = await _unitOfWork.Posts.GetByIdAsync(postId);
+        var deletedAt = DateTime.UtcNow;
 
-        if (existingPost == null || existingPost.AccountId != accountId)
-        {
+        var affectedRows = await _unitOfWork
+            .Posts.GetQuery()
+            .Where(p => p.Id == postId && p.AccountId == accountId && p.DeletedAt == null)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(p => p.DeletedAt, deletedAt));
+
+        if (affectedRows == 0)
             return false;
-        }
 
-        existingPost.DeletedAt = DateTime.UtcNow;
-
-        var existingPictures = await _unitOfWork.Pictures.GetByPostIdAsync(postId);
-
-        foreach (var picture in existingPictures)
-        {
-            picture.PostId = null;
-        }
-
-        await _unitOfWork.SaveChangesAsync();
+        await _unitOfWork
+            .Pictures.GetQuery()
+            .Where(p => p.PostId == postId)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(p => p.PostId, (Guid?)null));
 
         return true;
-    }
-
-    public async Task<List<string>> UploadPostImagesAsync(
-        UploadPostImageRequest request,
-        Guid accountId
-    )
-    {
-        var pics = new List<ImageDto>();
-        try
-        {
-            var existingAccount = await _unitOfWork
-                .Accounts.GetQuery()
-                .FirstOrDefaultAsync(a =>
-                    a.Id == accountId
-                    && a.DeletedAt == null
-                    && a.Status == BusinessObject.Enums.StatusType.Active
-                );
-
-            pics = await _cloudinaryHelper.UploadImages(request.Pictures);
-
-            _unitOfWork.Pictures.AddRange(
-                pics.Select(pl => new Picture
-                {
-                    Id = Guid.NewGuid(),
-                    PublicId = pl.PublicId,
-                    Link = pl.Link,
-                })
-            );
-
-            await _unitOfWork.SaveChangesAsync();
-
-            return pics.Select(x => x.Link).ToList();
-        }
-        catch (Exception)
-        {
-            await _cloudinaryHelper.DeleteImages(pics.Select(x => x.PublicId).ToList());
-            throw;
-        }
     }
 }

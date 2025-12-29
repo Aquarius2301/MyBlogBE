@@ -12,18 +12,15 @@ public class AccountService : IAccountService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly BaseSettings _baseSettings;
-    private readonly CloudinaryHelper _cloudinaryHelper;
     private readonly EmailHelper _emailHelper;
 
     public AccountService(
         IUnitOfWork unitOfWork,
-        CloudinaryHelper cloudinaryHelper,
         EmailHelper emailHelper,
         IOptions<BaseSettings> options
     )
     {
         _unitOfWork = unitOfWork;
-        _cloudinaryHelper = cloudinaryHelper;
         _emailHelper = emailHelper;
         _baseSettings = options.Value;
     }
@@ -44,6 +41,7 @@ public class AccountService : IAccountService
             {
                 Id = a.Id,
                 Username = a.Username,
+                Avatar = a.Picture != null ? a.Picture.Link : "",
                 DisplayName = a.DisplayName,
                 CreatedAt = a.CreatedAt,
             })
