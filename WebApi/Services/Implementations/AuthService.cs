@@ -62,13 +62,12 @@ public class AuthService : IAuthService
     {
         var account = await _unitOfWork
             .Accounts.GetQuery()
-            .FirstOrDefaultAsync(a =>
-                a.Username == username
-                && !PasswordHasherHelper.VerifyPassword(password, a.HashedPassword)
-                && a.DeletedAt == null
-            );
+            .FirstOrDefaultAsync(a => a.Username == username && a.DeletedAt == null);
 
-        if (account == null)
+        if (
+            account == null
+            || !PasswordHasherHelper.VerifyPassword(password, account.HashedPassword)
+        )
         {
             return null;
         }

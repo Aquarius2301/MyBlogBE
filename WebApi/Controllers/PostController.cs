@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebApi.Dtos;
@@ -261,7 +260,7 @@ public class PostController : ControllerBase
 
         var res = await _service.UpdatePostAsync(request, id, user.Id);
 
-        return res == null ? ApiResponse.BadRequest("NoAccount") : ApiResponse.Created(res);
+        return res == null ? ApiResponse.BadRequest("NoAccount") : ApiResponse.Success(res);
     }
 
     [HttpDelete("{id}")]
@@ -275,6 +274,6 @@ public class PostController : ControllerBase
 
         var res = await _service.DeletePostAsync(id, user.Id);
 
-        return res ? ApiResponse.Success("PostDeleted") : ApiResponse.NotFound("NoPost");
+        return res ? ApiResponse.Success() : ApiResponse.NotFound("NoPost");
     }
 }

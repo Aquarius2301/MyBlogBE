@@ -69,6 +69,9 @@ public class CommentService : ICommentService
                 LikeCount = c.CommentLikes.Count(),
                 CommentCount = c.Replies.Count(),
                 IsLiked = c.CommentLikes.Any(cl => cl.AccountId == accountId),
+                PostId = c.PostId,
+                ParentCommentId = c.ParentCommentId,
+                UpdatedAt = c.UpdatedAt,
             })
             .ToListAsync();
 
@@ -176,7 +179,7 @@ public class CommentService : ICommentService
 
         if (request.ReplyAccountId != null)
         {
-            var parentAccount = await _unitOfWork
+            replyAccount = await _unitOfWork
                 .Accounts.ReadOnly()
                 .Select(a => new AccountNameResponse
                 {
@@ -187,7 +190,7 @@ public class CommentService : ICommentService
                 })
                 .FirstOrDefaultAsync(c => c.Id == request.ReplyAccountId);
 
-            if (parentAccount == null)
+            if (replyAccount == null)
                 return null;
         }
 
@@ -220,6 +223,7 @@ public class CommentService : ICommentService
         };
 
         _unitOfWork.Comments.Add(comment);
+        await _unitOfWork.SaveChangesAsync();
 
         if (request.Pictures.Count > 0)
         {
@@ -229,7 +233,6 @@ public class CommentService : ICommentService
                 .ExecuteUpdateAsync(p => p.SetProperty(x => x.CommentId, comment.Id));
         }
 
-        await _unitOfWork.SaveChangesAsync();
         await _unitOfWork.CommitTransactionAsync();
 
         return new GetCommentsResponse

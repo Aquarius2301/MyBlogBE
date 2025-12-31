@@ -162,7 +162,7 @@ public class PostService : IPostService
 
         var hasNextPage = posts.Count > pageSize;
 
-        var result = posts.Take(pageSize).OrderByDescending(p => p.Score).ToList();
+        var result = posts.Take(pageSize).ToList();
 
         var nextCursor = hasNextPage ? result.Last().CreatedAt : (DateTime?)null;
 
@@ -241,7 +241,7 @@ public class PostService : IPostService
 
         var hasNextPage = posts.Count > pageSize;
 
-        var result = posts.Take(pageSize).OrderByDescending(p => p.Score).ToList();
+        var result = posts.Take(pageSize).ToList();
 
         var nextCursor = hasNextPage ? result.Last().CreatedAt : (DateTime?)null;
 
@@ -432,6 +432,8 @@ public class PostService : IPostService
 
         _unitOfWork.Posts.Add(post);
 
+        await _unitOfWork.SaveChangesAsync();
+
         if (request.Pictures.Count != 0)
         {
             await _unitOfWork
@@ -439,8 +441,6 @@ public class PostService : IPostService
                 .Where(p => request.Pictures.Contains(p.Link))
                 .ExecuteUpdateAsync(p => p.SetProperty(x => x.PostId, post.Id));
         }
-
-        await _unitOfWork.SaveChangesAsync();
 
         return new GetPostsResponse
         {
@@ -484,6 +484,8 @@ public class PostService : IPostService
                 p.Id,
                 p.Link,
                 p.CreatedAt,
+                p.PostLikes,
+                p.Comments,
             })
             .FirstOrDefaultAsync();
 
@@ -512,9 +514,10 @@ public class PostService : IPostService
         {
             await _unitOfWork
                 .Pictures.GetQuery()
-                .Where(p => request.Pictures.Contains(p.Link) && p.AccountId == accountId)
+                .Where(p => request.Pictures.Contains(p.Link))
                 .ExecuteUpdateAsync(p => p.SetProperty(x => x.PostId, postId));
         }
+
         var author = await _unitOfWork
             .Accounts.ReadOnly()
             .Where(a => a.Id == accountId)
@@ -536,10 +539,10 @@ public class PostService : IPostService
             UpdatedAt = updateTime,
 
             IsOwner = true,
-            IsLiked = false,
+            IsLiked = existingPost.PostLikes.Any(l => l.AccountId == accountId),
 
-            LikeCount = 0,
-            CommentCount = 0,
+            LikeCount = existingPost.PostLikes.Count,
+            CommentCount = existingPost.Comments.Count,
 
             PostPictures = request.Pictures ?? [],
 
