@@ -7,11 +7,5 @@ namespace DataAccess.Repositories;
 /// </summary>
 public interface IPostLikeRepository : IRepository<PostLike>
 {
-    /// <summary>
-    /// Gets a <see cref="PostLike"/> by account ID and comment ID.
-    /// </summary>
-    /// <param name="accountId">The unique identifier of the account.</param>
-    /// <param name="postId">The unique identifier of the post.</param>
-    /// <returns>A <see cref="PostLike"/> if found; otherwise, null.</returns>
-    Task<PostLike?> GetByAccountAndPostAsync(Guid accountId, Guid postId);
+    // Write your custom methods for PostLike entity here
 }

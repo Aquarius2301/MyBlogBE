@@ -29,21 +29,44 @@ public class AuthService : IAuthService
         _settings = options.Value;
     }
 
-    public Task<Account?> GetByUsernameAsync(string username)
+    public Task<Account?> GetAccountByNameOrEmailAsync(string identifier)
     {
-        return _unitOfWork.Accounts.GetByUsernameAsync(username, includeInactive: true); // Avoid create 2 accounts with same username
+        var query = _unitOfWork.Accounts.GetQuery();
+
+        query = query.Where(a =>
+            (a.Username == identifier || a.Email == identifier) && a.DeletedAt == null
+        );
+
+        return query.FirstOrDefaultAsync();
     }
 
-    public Task<Account?> GetByEmailAsync(string email)
+    public Task<Account?> GetAccountByUsernameAsync(string username)
     {
-        return _unitOfWork.Accounts.GetByEmailAsync(email, includeInactive: true); // Avoid create 2 accounts with same email
+        var query = _unitOfWork.Accounts.ReadOnly();
+
+        query = query.Where(a => a.Username == username && a.DeletedAt == null);
+
+        return query.FirstOrDefaultAsync();
+    }
+
+    public Task<Account?> GetAccountByEmailAsync(string email)
+    {
+        var query = _unitOfWork.Accounts.ReadOnly();
+
+        query = query.Where(a => a.Email == email && a.DeletedAt == null);
+
+        return query.FirstOrDefaultAsync();
     }
 
     public async Task<AuthResponse?> GetAuthenticateAsync(string username, string password)
     {
         var account = await _unitOfWork
             .Accounts.GetQuery()
-            .FirstOrDefaultAsync(a => a.Username == username && a.DeletedAt == null);
+            .FirstOrDefaultAsync(a =>
+                a.Username == username
+                && !PasswordHasherHelper.VerifyPassword(password, a.HashedPassword)
+                && a.DeletedAt == null
+            );
 
         if (account == null)
         {
@@ -66,13 +89,24 @@ public class AuthService : IAuthService
         };
     }
 
+    private Task<Account?> GetAccountByRefreshTokenAsync(string token)
+    {
+        var query = _unitOfWork.Accounts.GetQuery();
+
+        return query.FirstOrDefaultAsync(a => a.RefreshToken == token);
+    }
+
     public async Task<AuthResponse?> GetRefreshTokenAsync(string refreshToken)
     {
-        var account = await _unitOfWork.Accounts.GetByRefreshTokenAsync(refreshToken);
+        var account = await GetAccountByRefreshTokenAsync(refreshToken);
 
-        if (account != null && account.RefreshToken == refreshToken)
+        if (account != null)
         {
-            if (account.RefreshTokenExpiryTime >= DateTime.UtcNow)
+            if (
+                account.RefreshToken != null
+                && account.RefreshTokenExpiryTime != null
+                && account.RefreshTokenExpiryTime >= DateTime.UtcNow
+            )
             {
                 account.AccessToken = _jwtHelper.GenerateAccessToken(account);
 
@@ -101,7 +135,9 @@ public class AuthService : IAuthService
 
     public async Task<bool> RemoveRefresh(Guid accountId)
     {
-        var account = await _unitOfWork.Accounts.GetByIdAsync(accountId);
+        var account = await _unitOfWork
+            .Accounts.GetQuery()
+            .FirstOrDefaultAsync(a => a.Id == accountId);
 
         if (account != null)
         {
@@ -153,9 +189,18 @@ public class AuthService : IAuthService
         };
     }
 
+    private Task<Account?> GetAccountByEmailVerifiedCodeAsync(string code, VerificationType type)
+    {
+        var query = _unitOfWork.Accounts.GetQuery();
+
+        return query.FirstOrDefaultAsync(a =>
+            a.EmailVerifiedCode == code && a.VerificationType == type
+        );
+    }
+
     public async Task<bool> ConfirmRegisterAccountAsync(string confirmCode)
     {
-        var account = await _unitOfWork.Accounts.GetByEmailVerifiedCode(
+        var account = await GetAccountByEmailVerifiedCodeAsync(
             confirmCode,
             VerificationType.Register
         );
@@ -176,7 +221,7 @@ public class AuthService : IAuthService
 
     public async Task<string?> ConfirmForgotPasswordAccountAsync(string confirmCode)
     {
-        var account = await _unitOfWork.Accounts.GetByEmailVerifiedCode(
+        var account = await GetAccountByEmailVerifiedCodeAsync(
             confirmCode,
             VerificationType.ForgotPassword
         );
@@ -196,7 +241,7 @@ public class AuthService : IAuthService
     public async Task<bool> ForgotPasswordAsync(string identifier)
     {
         var tokenTimeout = _settings.TokenExpiryMinutes;
-        var account = await _unitOfWork.Accounts.GetByUsernameOrEmailAsync(identifier);
+        var account = await GetAccountByNameOrEmailAsync(identifier);
 
         if (account != null)
         {
@@ -220,7 +265,7 @@ public class AuthService : IAuthService
 
     public async Task<bool> ResetPasswordAsync(string confirmCode, string newPassowrd)
     {
-        var account = await _unitOfWork.Accounts.GetByEmailVerifiedCode(
+        var account = await GetAccountByEmailVerifiedCodeAsync(
             confirmCode,
             VerificationType.ChangePassword
         );

@@ -1,15 +1,27 @@
+using System;
 using BusinessObject;
+using Microsoft.EntityFrameworkCore;
 
 namespace DataAccess.Repositories.Implementations;
 
 public class Repository<T> : IRepository<T>
     where T : class
 {
-    protected readonly MyBlogContext _context;
+    private readonly MyBlogContext _context;
 
     public Repository(MyBlogContext context)
     {
         _context = context;
+    }
+
+    public IQueryable<T> GetQuery()
+    {
+        return _context.Set<T>();
+    }
+
+    public IQueryable<T> ReadOnly()
+    {
+        return _context.Set<T>().AsNoTracking();
     }
 
     public void Add(T entity)
@@ -20,21 +32,6 @@ public class Repository<T> : IRepository<T>
     public void AddRange(IEnumerable<T> entities)
     {
         _context.Set<T>().AddRange(entities);
-    }
-
-    public Task<ICollection<T>> GetAllAsync(bool includeDeleted = false)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task<T?> GetByIdAsync(Guid id, bool includeDeleted = false)
-    {
-        throw new NotImplementedException();
-    }
-
-    public IQueryable<T> GetQuery()
-    {
-        return _context.Set<T>().AsQueryable();
     }
 
     public void Remove(T entity)

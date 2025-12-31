@@ -140,14 +140,15 @@ public class AuthController : ControllerBase
         }
 
         // Check existence
-        if (await _service.GetByUsernameAsync(request.Username) != null)
+        if (await _service.GetAccountByUsernameAsync(request.Username) != null)
         {
             errors["username"] = "UsernameExist";
         }
-        if (await _service.GetByEmailAsync(request.Email) != null)
+        if (await _service.GetAccountByEmailAsync(request.Email) != null)
         {
             errors["email"] = "EmailExist";
         }
+
         if (errors.Count > 0)
         {
             return ApiResponse.BadRequest(data: errors);
@@ -178,23 +179,21 @@ public class AuthController : ControllerBase
     {
         if (type != "register" && type != "forgotPassword")
         {
-            return ApiResponse.BadRequest(_lang.Get("TypeError"));
+            return ApiResponse.BadRequest("TypeError");
         }
 
         if (type == "register")
         {
             var res = await _service.ConfirmRegisterAccountAsync(token);
-            return res
-                ? ApiResponse.Success(res, _lang.Get("ConfirmSuccessful"))
-                : ApiResponse.BadRequest(_lang.Get("InvalidToken"));
+            return res ? ApiResponse.Success() : ApiResponse.BadRequest("InvalidToken");
         }
         else
         {
             var res = await _service.ConfirmForgotPasswordAccountAsync(token);
 
             return !string.IsNullOrEmpty(res)
-                ? ApiResponse.Success(res, _lang.Get("ForgotPasswordConfirmSuccessful"))
-                : ApiResponse.BadRequest(_lang.Get("InvalidToken"));
+                ? ApiResponse.Success(res, "ForgotPasswordConfirmSuccessful")
+                : ApiResponse.BadRequest("InvalidToken");
         }
     }
 
@@ -218,7 +217,7 @@ public class AuthController : ControllerBase
 
         if (string.IsNullOrWhiteSpace(refreshToken))
         {
-            return ApiResponse.Unauthorized(_lang.Get("InvalidToken"));
+            return ApiResponse.Unauthorized("InvalidToken");
         }
         var res = await _service.GetRefreshTokenAsync(refreshToken);
 
@@ -240,7 +239,7 @@ public class AuthController : ControllerBase
             return ApiResponse.Success();
         }
 
-        return ApiResponse.Unauthorized(_lang.Get("InvalidToken"));
+        return ApiResponse.Unauthorized("InvalidToken");
     }
 
     /// <summary>

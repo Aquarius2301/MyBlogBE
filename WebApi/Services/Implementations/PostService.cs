@@ -26,8 +26,7 @@ public class PostService : IPostService
     )
     {
         var baseQuery = _unitOfWork
-            .Posts.GetQuery()
-            .AsNoTracking()
+            .Posts.ReadOnly()
             .Where(p => p.DeletedAt == null && (cursor == null || p.CreatedAt < cursor));
 
         var postsQuery = baseQuery.OrderByDescending(p => p.CreatedAt).Take(pageSize + 1);
@@ -101,8 +100,7 @@ public class PostService : IPostService
     )
     {
         var baseQuery = _unitOfWork
-            .Posts.GetQuery()
-            .AsNoTracking()
+            .Posts.ReadOnly()
             .Where(p =>
                 p.DeletedAt == null
                 && p.AccountId == accountId
@@ -179,8 +177,7 @@ public class PostService : IPostService
     )
     {
         var baseQuery = _unitOfWork
-            .Posts.GetQuery()
-            .AsNoTracking()
+            .Posts.ReadOnly()
             .Where(p =>
                 p.DeletedAt == null
                 && p.Account.Username == username
@@ -254,8 +251,7 @@ public class PostService : IPostService
     public async Task<GetPostDetailResponse?> GetPostByLinkAsync(string link, Guid accountId)
     {
         return await _unitOfWork
-            .Posts.GetQuery()
-            .AsNoTracking()
+            .Posts.ReadOnly()
             .Where(p => p.DeletedAt == null && p.Link == link)
             .Select(p => new GetPostDetailResponse
             {
@@ -290,16 +286,14 @@ public class PostService : IPostService
     public async Task<int?> LikePostAsync(Guid postId, Guid accountId)
     {
         var postExists = await _unitOfWork
-            .Posts.GetQuery()
-            .AsNoTracking()
+            .Posts.ReadOnly()
             .AnyAsync(p => p.Id == postId && p.DeletedAt == null);
 
         if (!postExists)
             return null;
 
         var alreadyLiked = await _unitOfWork
-            .PostLikes.GetQuery()
-            .AsNoTracking()
+            .PostLikes.ReadOnly()
             .AnyAsync(l => l.PostId == postId && l.AccountId == accountId);
 
         if (!alreadyLiked)
@@ -316,18 +310,19 @@ public class PostService : IPostService
             await _unitOfWork.SaveChangesAsync();
         }
 
+        return await _unitOfWork.PostLikes.ReadOnly().CountAsync(l => l.PostId == postId);
+    }
+
+    private async Task<bool> IsPostExists(Guid postId)
+    {
         return await _unitOfWork
-            .PostLikes.GetQuery()
-            .AsNoTracking()
-            .CountAsync(l => l.PostId == postId);
+            .Posts.ReadOnly()
+            .AnyAsync(p => p.Id == postId && p.DeletedAt == null);
     }
 
     public async Task<int?> CancelLikePostAsync(Guid postId, Guid accountId)
     {
-        var postExists = await _unitOfWork
-            .Posts.GetQuery()
-            .AsNoTracking()
-            .AnyAsync(p => p.Id == postId && p.DeletedAt == null);
+        var postExists = await IsPostExists(postId);
 
         if (!postExists)
             return null;
@@ -343,10 +338,7 @@ public class PostService : IPostService
             await _unitOfWork.SaveChangesAsync();
         }
 
-        return await _unitOfWork
-            .PostLikes.GetQuery()
-            .AsNoTracking()
-            .CountAsync(l => l.PostId == postId);
+        return await _unitOfWork.PostLikes.ReadOnly().CountAsync(l => l.PostId == postId);
     }
 
     public async Task<(List<GetCommentsResponse>?, DateTime?)> GetPostCommentsList(
@@ -356,10 +348,7 @@ public class PostService : IPostService
         int pageSize
     )
     {
-        var existingPost = await _unitOfWork
-            .Posts.GetQuery()
-            .AsNoTracking()
-            .AnyAsync(p => p.DeletedAt == null && p.Id == postId);
+        var existingPost = await IsPostExists(postId);
 
         if (!existingPost)
         {
@@ -367,8 +356,7 @@ public class PostService : IPostService
         }
 
         var baseQuery = _unitOfWork
-            .Comments.GetQuery()
-            .AsNoTracking()
+            .Comments.ReadOnly()
             .Where(c =>
                 c.PostId == postId
                 && c.ParentCommentId == null
@@ -418,8 +406,7 @@ public class PostService : IPostService
     public async Task<GetPostsResponse?> AddPostAsync(CreatePostRequest request, Guid accountId)
     {
         var existingAccount = await _unitOfWork
-            .Accounts.GetQuery()
-            .AsNoTracking()
+            .Accounts.ReadOnly()
             .Where(a => a.DeletedAt == null && a.Id == accountId)
             .Select(a => new
             {
@@ -529,8 +516,7 @@ public class PostService : IPostService
                 .ExecuteUpdateAsync(p => p.SetProperty(x => x.PostId, postId));
         }
         var author = await _unitOfWork
-            .Accounts.GetQuery()
-            .AsNoTracking()
+            .Accounts.ReadOnly()
             .Where(a => a.Id == accountId)
             .Select(a => new
             {

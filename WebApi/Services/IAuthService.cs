@@ -1,3 +1,4 @@
+using BusinessObject.Enums;
 using BusinessObject.Models;
 using WebApi.Dtos;
 
@@ -15,7 +16,7 @@ public interface IAuthService
     /// <returns>
     /// An <see cref="Account"/> with the specified username if found; otherwise, null.
     /// </returns>
-    Task<Account?> GetByUsernameAsync(string username);
+    Task<Account?> GetAccountByUsernameAsync(string username);
 
     /// <summary>
     /// Gets an account by its email.
@@ -24,7 +25,7 @@ public interface IAuthService
     /// <returns>
     /// An <see cref="Account"/> with the specified email if found; otherwise, null.
     /// </returns>
-    Task<Account?> GetByEmailAsync(string email);
+    Task<Account?> GetAccountByEmailAsync(string email);
 
     /// <summary>
     /// Authenticates a user with the given username and password.

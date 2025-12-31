@@ -10,12 +10,10 @@ namespace WebApi.Services.Implementations;
 public class CommentService : ICommentService
 {
     private readonly IUnitOfWork _unitOfWork;
-    private readonly CloudinaryHelper _cloudinaryHelper;
 
-    public CommentService(IUnitOfWork unitOfWork, CloudinaryHelper cloudinaryHelper)
+    public CommentService(IUnitOfWork unitOfWork)
     {
         _unitOfWork = unitOfWork;
-        _cloudinaryHelper = cloudinaryHelper;
     }
 
     public async Task<(List<GetCommentsResponse>?, DateTime?)> GetChildCommentList(
@@ -26,14 +24,13 @@ public class CommentService : ICommentService
     )
     {
         var baseQuery = _unitOfWork
-            .Comments.GetQuery()
+            .Comments.ReadOnly()
             .Where(c =>
                 c.ParentCommentId == commentId
                 && c.ReplyAccountId != null
                 && (cursor == null || c.CreatedAt > cursor)
                 && c.DeletedAt == null
-            )
-            .AsNoTracking();
+            );
 
         if (!await baseQuery.AnyAsync())
         {
@@ -84,22 +81,25 @@ public class CommentService : ICommentService
         return (res, nextCursor);
     }
 
+    private async Task<bool> IsCommentsExists(Guid commentId)
+    {
+        return await _unitOfWork
+            .Comments.ReadOnly()
+            .AnyAsync(p => p.Id == commentId && p.DeletedAt == null);
+    }
+
     public async Task<int?> LikeCommentAsync(Guid commentId, Guid accountId)
     {
-        var existingComment = await _unitOfWork
-            .Comments.GetQuery()
-            .AsNoTracking()
-            .AnyAsync(x => x.Id == commentId);
+        var existingComment = await IsCommentsExists(commentId);
 
         if (!existingComment)
         {
             return null;
         }
 
-        var existingLike = await _unitOfWork.CommentLikes.GetByAccountAndCommentAsync(
-            accountId,
-            commentId
-        );
+        var existingLike = await _unitOfWork
+            .CommentLikes.GetQuery()
+            .FirstOrDefaultAsync(cl => cl.AccountId == accountId && cl.CommentId == commentId);
 
         if (existingLike == null)
         {
@@ -116,18 +116,14 @@ public class CommentService : ICommentService
         }
 
         return await _unitOfWork
-            .CommentLikes.GetQuery()
-            .AsNoTracking()
+            .CommentLikes.ReadOnly()
             .Where(x => x.CommentId == commentId)
             .CountAsync();
     }
 
     public async Task<int?> CancelLikeCommentAsync(Guid commentId, Guid accountId)
     {
-        var existingComment = await _unitOfWork
-            .Comments.GetQuery()
-            .AsNoTracking()
-            .AnyAsync(x => x.Id == commentId);
+        var existingComment = await IsCommentsExists(commentId);
 
         if (!existingComment)
         {
@@ -145,8 +141,7 @@ public class CommentService : ICommentService
         }
 
         return await _unitOfWork
-            .CommentLikes.GetQuery()
-            .AsNoTracking()
+            .CommentLikes.ReadOnly()
             .Where(x => x.CommentId == commentId)
             .CountAsync();
     }
@@ -157,8 +152,7 @@ public class CommentService : ICommentService
     )
     {
         var post = await _unitOfWork
-            .Posts.GetQuery()
-            .AsNoTracking()
+            .Posts.ReadOnly()
             .FirstOrDefaultAsync(p => p.Id == request.PostId && p.DeletedAt == null);
 
         if (post == null)
@@ -167,8 +161,7 @@ public class CommentService : ICommentService
         if (request.ParentCommentId != null)
         {
             var parentComment = await _unitOfWork
-                .Comments.GetQuery()
-                .AsNoTracking()
+                .Comments.ReadOnly()
                 .FirstOrDefaultAsync(c =>
                     c.Id == request.ParentCommentId
                     && c.PostId == request.PostId
@@ -184,8 +177,7 @@ public class CommentService : ICommentService
         if (request.ReplyAccountId != null)
         {
             var parentAccount = await _unitOfWork
-                .Accounts.GetQuery()
-                .AsNoTracking()
+                .Accounts.ReadOnly()
                 .Select(a => new AccountNameResponse
                 {
                     Id = a.Id,
@@ -200,8 +192,7 @@ public class CommentService : ICommentService
         }
 
         var commenter = await _unitOfWork
-            .Accounts.GetQuery()
-            .AsNoTracking()
+            .Accounts.ReadOnly()
             .Where(a => a.Id == accountId)
             .Select(a => new AccountNameResponse
             {
@@ -299,8 +290,7 @@ public class CommentService : ICommentService
         await _unitOfWork.CommitTransactionAsync();
 
         var res = await _unitOfWork
-            .Comments.GetQuery()
-            .AsNoTracking()
+            .Comments.ReadOnly()
             .Where(x => x.Id == commentId && x.DeletedAt == null)
             .Select(c => new GetCommentsResponse
             {

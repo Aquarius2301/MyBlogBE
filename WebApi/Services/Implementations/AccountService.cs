@@ -35,8 +35,7 @@ public class AccountService : IAccountService
             return ([], null);
 
         var query = _unitOfWork
-            .Accounts.GetQuery()
-            .AsNoTracking()
+            .Accounts.ReadOnly()
             .Where(a =>
                 (a.Username.Contains(name) || a.DisplayName.Contains(name))
                 && (cursor == null || a.CreatedAt < cursor)
@@ -65,8 +64,7 @@ public class AccountService : IAccountService
     public async Task<AccountResponse?> GetProfileByIdAsync(Guid accountId)
     {
         var account = await _unitOfWork
-            .Accounts.GetQuery()
-            .AsNoTracking()
+            .Accounts.ReadOnly()
             .Where(x => x.Id == accountId)
             .Select(a => new AccountResponse
             {
@@ -89,8 +87,7 @@ public class AccountService : IAccountService
     public async Task<AccountResponse?> GetProfileByUsernameAsync(string username, Guid userId)
     {
         var account = await _unitOfWork
-            .Accounts.GetQuery()
-            .AsNoTracking()
+            .Accounts.ReadOnly()
             .Where(x => x.Username == username)
             .Select(a => new AccountResponse
             {
@@ -115,8 +112,7 @@ public class AccountService : IAccountService
     )
     {
         var account = await _unitOfWork
-            .Accounts.GetQuery()
-            .AsNoTracking()
+            .Accounts.ReadOnly()
             .FirstOrDefaultAsync(a => a.Id == accountId && a.DeletedAt == null);
 
         if (account == null)
@@ -151,7 +147,6 @@ public class AccountService : IAccountService
     {
         var account = await _unitOfWork
             .Accounts.GetQuery()
-            .AsNoTracking()
             .FirstOrDefaultAsync(a => a.Id == accountId && a.DeletedAt == null);
 
         if (account == null)
@@ -168,8 +163,7 @@ public class AccountService : IAccountService
     public async Task<bool> IsPasswordCorrectAsync(Guid accountId, string password)
     {
         var account = await _unitOfWork
-            .Accounts.GetQuery()
-            .AsNoTracking()
+            .Accounts.ReadOnly()
             .FirstOrDefaultAsync(a => a.Id == accountId && a.DeletedAt == null);
 
         return account != null
@@ -180,8 +174,7 @@ public class AccountService : IAccountService
     {
         //Check if account exists
         var account = await _unitOfWork
-            .Accounts.GetQuery()
-            .AsNoTracking()
+            .Accounts.ReadOnly()
             .Include(a => a.Picture)
             .FirstOrDefaultAsync(a => a.Id == accountId && a.DeletedAt == null);
 
@@ -192,14 +185,8 @@ public class AccountService : IAccountService
 
         var picture = await _unitOfWork
             .Pictures.GetQuery()
-            .FirstOrDefaultAsync(p => p.Link == avatarFile);
-
-        if (picture == null)
-        {
-            return false;
-        }
-
-        picture.AccountId = accountId;
+            .Where(p => p.Link == avatarFile)
+            .ExecuteUpdateAsync(p => p.SetProperty(p => p.AccountId, accountId));
 
         await _unitOfWork.SaveChangesAsync();
 
@@ -210,8 +197,6 @@ public class AccountService : IAccountService
     {
         var account = await _unitOfWork
             .Accounts.GetQuery()
-            .AsNoTracking()
-            .Include(a => a.Picture)
             .FirstOrDefaultAsync(a =>
                 a.Id == accountId && a.SelfRemoveTime == null && a.DeletedAt == null
             );

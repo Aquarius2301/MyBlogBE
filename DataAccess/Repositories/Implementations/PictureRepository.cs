@@ -1,11 +1,12 @@
+using System;
 using BusinessObject;
 using BusinessObject.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace DataAccess.Repositories.Implementations;
 
-public class CommentLikeRepository : Repository<CommentLike>, ICommentLikeRepository
+public class PictureRepository : Repository<Picture>, IPictureRepository
 {
-    public CommentLikeRepository(MyBlogContext context)
+    public PictureRepository(MyBlogContext context)
         : base(context) { }
 }

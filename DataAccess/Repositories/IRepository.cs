@@ -7,55 +7,40 @@ public interface IRepository<T>
     where T : class
 {
     /// <summary>
-    /// Adds the <typeparamref name="T"/> entity to the context.
+    /// Returns an <see cref="IQueryable{T}"/> for the entity, allowing for further LINQ compositions.
+    /// Can be used for insert, update, delete, and read operations.
     /// </summary>
-    /// <param name="entity">
-    /// A <typeparamref name="T"/> object to add.
-    /// </param>
-    void Add(T entity);
-
-    /// <summary>
-    /// Adds a range of <typeparamref name="T"/> entities to the context.
-    /// </summary>
-    /// <param name="entities">
-    /// An enumerable collection of <typeparamref name="T"/> objects to add.
-    /// </param>
-    void AddRange(IEnumerable<T> entities);
-
-    /// <summary>
-    /// Removes the <typeparamref name="T"/> entity from the context.
-    /// </summary>
-    /// <param name="entity">
-    /// A <typeparamref name="T"/> object to remove.
-    /// </param>
-    void Remove(T entity);
-
-    /// <summary>
-    /// Removes a range of <typeparamref name="T"/> entities from the context.
-    /// </summary>
-    /// <param name="entities">
-    /// An enumerable collection of <typeparamref name="T"/> objects to remove.
-    /// </param>
-    void RemoveRange(IEnumerable<T> entities);
-
-    /// <summary>
-    /// Gets the queryable set of entities of type <typeparamref name="T"/>.
-    /// </summary>
-    /// <returns>An <see cref="IQueryable"/> of entities of type <typeparamref name="T"/>.</returns>
+    /// <returns>An <see cref="IQueryable{T}"/> of the requested entity type.</returns>
     IQueryable<T> GetQuery();
 
     /// <summary>
-    /// Gets an entity of type <typeparamref name="T"/> .
+    /// Returns an <see cref="IQueryable{T}"/> specifically for read-only operations.
+    /// Don't use it for insert, update, or delete operations.
     /// </summary>
-    /// <param name="id">The unique identifier of the entity.</param>
-    /// <param name="includeDeleted">Whether to include deleted entities.</param>
-    /// <returns>An entity of type <typeparamref name="T"/> if found; otherwise, null.</returns>
-    Task<T?> GetByIdAsync(Guid id, bool includeDeleted = false);
+    /// <returns>A non-tracking <see cref="IQueryable{T}"/>.</returns>
+    IQueryable<T> ReadOnly();
 
     /// <summary>
-    /// Gets all entities of type <typeparamref name="T"/> .
+    /// Marks a new entity to be inserted into the data store.
     /// </summary>
-    /// <param name="includeDeleted">Whether to include deleted entities.</param>
-    /// <returns>An entity of type <typeparamref name="T"/>.</returns>
-    Task<ICollection<T>> GetAllAsync(bool includeDeleted = false);
+    /// <param name="entity">The entity to add.</param>
+    void Add(T entity);
+
+    /// <summary>
+    /// Marks a collection of entities to be inserted into the data store.
+    /// </summary>
+    /// <param name="entities">The collection of entities to add.</param>
+    void AddRange(IEnumerable<T> entities);
+
+    /// <summary>
+    /// Marks an existing entity to be deleted from the data store.
+    /// </summary>
+    /// <param name="entity">The entity to remove.</param>
+    void Remove(T entity);
+
+    /// <summary>
+    /// Marks a collection of existing entities to be deleted from the data store.
+    /// </summary>
+    /// <param name="entities">The collection of entities to remove.</param>
+    void RemoveRange(IEnumerable<T> entities);
 }
