@@ -1,6 +1,7 @@
 using BusinessObject.Enums;
 using BusinessObject.Models;
 using DataAccess.UnitOfWork;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using WebApi.Dtos;
 using WebApi.Helpers;
@@ -40,13 +41,11 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponse?> GetAuthenticateAsync(string username, string password)
     {
-        var account = await _unitOfWork.Accounts.GetByUsernameAsync(username);
+        var account = await _unitOfWork
+            .Accounts.GetQuery()
+            .FirstOrDefaultAsync(a => a.Username == username && a.DeletedAt == null);
 
-        if (
-            account == null
-            || account.Status == StatusType.InActive
-            || !PasswordHasherHelper.VerifyPassword(password, account.HashedPassword)
-        )
+        if (account == null)
         {
             return null;
         }
@@ -76,7 +75,6 @@ public class AuthService : IAuthService
             if (account.RefreshTokenExpiryTime >= DateTime.UtcNow)
             {
                 account.AccessToken = _jwtHelper.GenerateAccessToken(account);
-                // account.RefreshToken = _jwtHelper.GenerateRefreshToken();
 
                 await _unitOfWork.SaveChangesAsync();
 

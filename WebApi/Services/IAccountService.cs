@@ -15,7 +15,7 @@ public interface IAccountService
     /// <param name="avatarFile">The new avatar file.</param>
     /// <returns> A <see cref="ImageDto"/> contains image data if the avatar was successfully changed;
     /// otherwise, null.</returns>
-    Task<bool?> ChangeAvatarAsync(Guid accountId, string avatarFile);
+    Task<bool> ChangeAvatarAsync(Guid accountId, string avatarFile);
 
     /// <summary>
     /// Change account password.
@@ -32,7 +32,7 @@ public interface IAccountService
     /// <param name="cursor">Timestamp of the last loaded child comment (used for pagination).</param>
     /// <param name="pageSize">The number of items to return per page.</param>
     /// <returns> A list of <see cref="AccountNameResponse"/> with the matching name.</returns>
-    Task<List<AccountNameResponse>> GetAccountByNameAsync(
+    Task<(List<AccountNameResponse>, DateTime?)> GetAccountByNameAsync(
         string name,
         DateTime? cursor,
         int pageSize
@@ -54,7 +54,7 @@ public interface IAccountService
     /// <param name="request">The update account request data.</param>
     /// <returns> An <see cref="UpdateAccountResponse"/> contains updated account information if successful;
     /// otherwise, null.</returns>
-    Task<UpdateAccountResponse?> UpdateAccountAsync(Guid accountId, UpdateAccountRequest request);
+    Task<AccountResponse?> UpdateAccountAsync(Guid accountId, UpdateAccountRequest request);
 
     /// <summary>
     /// Check if the provided password is correct for the account

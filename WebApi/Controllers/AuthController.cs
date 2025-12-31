@@ -61,17 +61,14 @@ public class AuthController : ControllerBase
             }
 
             // Authenticate user
-            var authResponse = await _service.GetAuthenticateAsync(
-                request.Username,
-                request.Password
-            );
+            var res = await _service.GetAuthenticateAsync(request.Username, request.Password);
 
             // Save cookie on server
-            if (authResponse != null)
+            if (res != null)
             {
                 Response.Cookies.Append(
                     "accessToken",
-                    authResponse.AccessToken,
+                    res.AccessToken,
                     new CookieOptions
                     {
                         HttpOnly = true,
@@ -85,7 +82,7 @@ public class AuthController : ControllerBase
                 );
                 Response.Cookies.Append(
                     "refreshToken",
-                    authResponse.RefreshToken,
+                    res.RefreshToken,
                     new CookieOptions
                     {
                         HttpOnly = true,
@@ -97,11 +94,8 @@ public class AuthController : ControllerBase
                 );
                 return ApiResponse.Success();
             }
-            return ApiResponse.Unauthorized("LoginFailed");
 
-            // return authResponse != null
-            //     ? ApiResponse.Success(authResponse)
-            //     : ApiResponse.Unauthorized(_lang.Get("LoginFailed"));
+            return ApiResponse.Unauthorized("LoginFailed");
         }
         catch (Exception ex)
         {
@@ -162,7 +156,7 @@ public class AuthController : ControllerBase
         // Register account if no errors
         var res = await _service.RegisterAccountAsync(request);
 
-        return ApiResponse.Success(res, _lang.Get("ConfirmEmail"));
+        return ApiResponse.Success(res, "ConfirmEmail");
     }
 
     /// <summary>
@@ -226,13 +220,13 @@ public class AuthController : ControllerBase
         {
             return ApiResponse.Unauthorized(_lang.Get("InvalidToken"));
         }
-        var authResponse = await _service.GetRefreshTokenAsync(refreshToken);
+        var res = await _service.GetRefreshTokenAsync(refreshToken);
 
-        if (authResponse != null)
+        if (res != null)
         {
             Response.Cookies.Append(
                 "accessToken",
-                authResponse.AccessToken,
+                res.AccessToken,
                 new CookieOptions
                 {
                     HttpOnly = true,
@@ -243,7 +237,7 @@ public class AuthController : ControllerBase
                 }
             );
 
-            return ApiResponse.Success(authResponse);
+            return ApiResponse.Success();
         }
 
         return ApiResponse.Unauthorized(_lang.Get("InvalidToken"));
@@ -268,7 +262,7 @@ public class AuthController : ControllerBase
         var res = await _service.ForgotPasswordAsync(request.Identifier);
 
         return res
-            ? ApiResponse.Success(res, _lang.Get("ConfirmEmail"))
+            ? ApiResponse.Success(res, "ConfirmEmail")
             : ApiResponse.BadRequest(data: new { Identifier = "NoAccountFound" });
     }
 
@@ -296,7 +290,7 @@ public class AuthController : ControllerBase
 
         var res = await _service.ResetPasswordAsync(request.ConfirmCode, request.NewPassword);
 
-        return res ? ApiResponse.Success(res) : ApiResponse.BadRequest(_lang.Get("InvalidToken"));
+        return res ? ApiResponse.Success() : ApiResponse.BadRequest("InvalidToken");
     }
 
     /// <summary>
@@ -341,6 +335,6 @@ public class AuthController : ControllerBase
             }
         );
 
-        return ok ? ApiResponse.Success(_lang.Get("LoggedOut")) : ApiResponse.Unauthorized();
+        return ok ? ApiResponse.Success() : ApiResponse.Unauthorized();
     }
 }

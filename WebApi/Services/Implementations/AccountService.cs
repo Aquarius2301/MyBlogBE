@@ -25,37 +25,49 @@ public class AccountService : IAccountService
         _baseSettings = options.Value;
     }
 
-    public async Task<List<AccountNameResponse>> GetAccountByNameAsync(
+    public async Task<(List<AccountNameResponse>, DateTime?)> GetAccountByNameAsync(
         string name,
         DateTime? cursor,
         int pageSize
     )
     {
-        var account = await _unitOfWork
+        if (string.IsNullOrWhiteSpace(name))
+            return ([], null);
+
+        var query = _unitOfWork
             .Accounts.GetQuery()
+            .AsNoTracking()
             .Where(a =>
                 (a.Username.Contains(name) || a.DisplayName.Contains(name))
                 && (cursor == null || a.CreatedAt < cursor)
             )
+            .OrderByDescending(a => a.CreatedAt)
+            .Take(pageSize + 1);
+
+        var accounts = await query
             .Select(a => new AccountNameResponse
             {
                 Id = a.Id,
                 Username = a.Username,
-                Avatar = a.Picture != null ? a.Picture.Link : "",
                 DisplayName = a.DisplayName,
+                Avatar = a.Picture != null ? a.Picture.Link : string.Empty,
                 CreatedAt = a.CreatedAt,
             })
-            .OrderByDescending(a => a.CreatedAt)
-            .Take(pageSize)
             .ToListAsync();
 
-        return account;
+        var hasMore = accounts.Count > pageSize;
+        var nextCursor = hasMore ? accounts.Last().CreatedAt : (DateTime?)null;
+        var result = accounts.Take(pageSize).ToList();
+
+        return (result, nextCursor);
     }
 
     public async Task<AccountResponse?> GetProfileByIdAsync(Guid accountId)
     {
         var account = await _unitOfWork
             .Accounts.GetQuery()
+            .AsNoTracking()
+            .Where(x => x.Id == accountId)
             .Select(a => new AccountResponse
             {
                 Id = a.Id,
@@ -69,7 +81,7 @@ public class AccountService : IAccountService
                 Status = a.Status.ToString(),
                 CreatedAt = a.CreatedAt,
             })
-            .FirstOrDefaultAsync(x => x.Id == accountId);
+            .FirstOrDefaultAsync();
 
         return account;
     }
@@ -78,6 +90,8 @@ public class AccountService : IAccountService
     {
         var account = await _unitOfWork
             .Accounts.GetQuery()
+            .AsNoTracking()
+            .Where(x => x.Username == username)
             .Select(a => new AccountResponse
             {
                 Id = a.Id,
@@ -90,17 +104,20 @@ public class AccountService : IAccountService
                 Status = a.Status.ToString(),
                 CreatedAt = a.CreatedAt,
             })
-            .FirstOrDefaultAsync(x => x.Username == username);
+            .FirstOrDefaultAsync();
 
         return account;
     }
 
-    public async Task<UpdateAccountResponse?> UpdateAccountAsync(
+    public async Task<AccountResponse?> UpdateAccountAsync(
         Guid accountId,
         UpdateAccountRequest request
     )
     {
-        var account = await _unitOfWork.Accounts.GetByIdAsync(accountId);
+        var account = await _unitOfWork
+            .Accounts.GetQuery()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(a => a.Id == accountId && a.DeletedAt == null);
 
         if (account == null)
         {
@@ -115,19 +132,27 @@ public class AccountService : IAccountService
 
         await _unitOfWork.SaveChangesAsync();
 
-        return new UpdateAccountResponse
+        return new AccountResponse
         {
             Id = account.Id,
             Username = account.Username,
             DisplayName = account.DisplayName,
             DateOfBirth = account.DateOfBirth,
-            UpdatedAt = updateTime,
+            AvatarUrl = account.Picture != null ? account.Picture.Link : "",
+            IsOwner = true,
+            CreatedAt = account.CreatedAt,
+            Email = account.Email,
+            Status = account.Status.ToString(),
+            Language = account.Language.ToString(),
         };
     }
 
     public async Task<bool> ChangePasswordAsync(Guid accountId, string password)
     {
-        var account = await _unitOfWork.Accounts.GetByIdAsync(accountId);
+        var account = await _unitOfWork
+            .Accounts.GetQuery()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(a => a.Id == accountId && a.DeletedAt == null);
 
         if (account == null)
         {
@@ -142,28 +167,39 @@ public class AccountService : IAccountService
 
     public async Task<bool> IsPasswordCorrectAsync(Guid accountId, string password)
     {
-        var account = await _unitOfWork.Accounts.GetByIdAsync(accountId);
+        var account = await _unitOfWork
+            .Accounts.GetQuery()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(a => a.Id == accountId && a.DeletedAt == null);
 
         return account != null
             && PasswordHasherHelper.VerifyPassword(password, account.HashedPassword);
     }
 
-    public async Task<bool?> ChangeAvatarAsync(Guid accountId, string avatarFile)
+    public async Task<bool> ChangeAvatarAsync(Guid accountId, string avatarFile)
     {
         //Check if account exists
         var account = await _unitOfWork
             .Accounts.GetQuery()
+            .AsNoTracking()
             .Include(a => a.Picture)
             .FirstOrDefaultAsync(a => a.Id == accountId && a.DeletedAt == null);
 
         if (account == null)
         {
-            return null;
+            return false;
         }
 
-        var picture = await _unitOfWork.Pictures.GetQuery().FirstAsync(p => p.Link == avatarFile);
+        var picture = await _unitOfWork
+            .Pictures.GetQuery()
+            .FirstOrDefaultAsync(p => p.Link == avatarFile);
 
-        account.Picture = picture;
+        if (picture == null)
+        {
+            return false;
+        }
+
+        picture.AccountId = accountId;
 
         await _unitOfWork.SaveChangesAsync();
 
@@ -172,7 +208,13 @@ public class AccountService : IAccountService
 
     public async Task<DateTime?> SelfRemoveAccount(Guid accountId)
     {
-        var account = await _unitOfWork.Accounts.GetByIdAsync(accountId);
+        var account = await _unitOfWork
+            .Accounts.GetQuery()
+            .AsNoTracking()
+            .Include(a => a.Picture)
+            .FirstOrDefaultAsync(a =>
+                a.Id == accountId && a.SelfRemoveTime == null && a.DeletedAt == null
+            );
 
         if (account == null)
         {

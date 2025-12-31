@@ -42,9 +42,7 @@ public class AccountController : ControllerBase
 
         var account = await _service.GetProfileByIdAsync(user.Id);
 
-        return account == null
-            ? ApiResponse.NotFound("Account not found.")
-            : ApiResponse.Success(account);
+        return account == null ? ApiResponse.NotFound("NoAccount") : ApiResponse.Success(account);
     }
 
     [HttpGet("profile/{id}")]
@@ -52,9 +50,7 @@ public class AccountController : ControllerBase
     {
         var account = await _service.GetProfileByIdAsync(id);
 
-        return account == null
-            ? ApiResponse.NotFound("Account not found.")
-            : ApiResponse.Success(account);
+        return account == null ? ApiResponse.NotFound("NoAccount") : ApiResponse.Success(account);
     }
 
     [HttpGet("profile/username/{username}")]
@@ -64,9 +60,7 @@ public class AccountController : ControllerBase
 
         var account = await _service.GetProfileByUsernameAsync(username, user.Id);
 
-        return account == null
-            ? ApiResponse.NotFound("Account not found.")
-            : ApiResponse.Success(account);
+        return account == null ? ApiResponse.NotFound("NoAccount") : ApiResponse.Success(account);
     }
 
     [HttpGet("")]
@@ -75,7 +69,7 @@ public class AccountController : ControllerBase
         [FromQuery] PaginationRequest pagination
     )
     {
-        var account = await _service.GetAccountByNameAsync(
+        var res = await _service.GetAccountByNameAsync(
             name,
             pagination.Cursor,
             pagination.PageSize
@@ -84,8 +78,8 @@ public class AccountController : ControllerBase
         return ApiResponse.Success(
             new PaginationResponse
             {
-                Items = account,
-                Cursor = account.Count > 0 ? account.Last().CreatedAt : null,
+                Items = res.Item1,
+                Cursor = res.Item2,
                 PageSize = pagination.PageSize,
             }
         );
@@ -96,9 +90,9 @@ public class AccountController : ControllerBase
     {
         var user = _jwtHelper.GetAccountInfo();
 
-        var account = await _service.UpdateAccountAsync(user.Id, request);
+        var res = await _service.UpdateAccountAsync(user.Id, request);
 
-        return ApiResponse.Success(account);
+        return res != null ? ApiResponse.Success(res) : ApiResponse.NotFound("NoAccount");
     }
 
     [HttpPut("profile/me/change-password")]
@@ -114,31 +108,31 @@ public class AccountController : ControllerBase
             || !await _service.IsPasswordCorrectAsync(user.Id, request.OldPassword) // correct check
         )
         {
-            errors["OldPassword"] = _lang.Get("OldPasswordIncorrect");
+            errors["OldPassword"] = "OldPasswordIncorrect";
         }
 
         // Check if the new password is different from the old password
         if (request.OldPassword == request.NewPassword)
         {
-            errors["NewPassword"] = _lang.Get("NewPasswordMustBeDifferent");
+            errors["NewPassword"] = "NewPasswordMustBeDifferent";
         }
 
         // Check if the new password is strong enough
-        if (ValidationHelper.IsStrongPassword(request.NewPassword) == false)
+        if (!ValidationHelper.IsStrongPassword(request.NewPassword))
         {
-            errors["NewPassword"] = _lang.Get("PasswordRegister");
+            errors["NewPassword"] = "PasswordRegister";
         }
 
         if (errors.Count > 0)
         {
-            return ApiResponse.BadRequest(data: errors);
+            return ApiResponse.BadRequest("PasswordChangeFailed", data: errors);
         }
 
         var res = await _service.ChangePasswordAsync(user.Id, request.NewPassword);
 
         return res
-            ? ApiResponse.Success(_lang.Get("PasswordChanged"))
-            : ApiResponse.BadRequest(_lang.Get("PasswordChangeFailed"));
+            ? ApiResponse.Success("PasswordChanged")
+            : ApiResponse.BadRequest("PasswordChangeFailed");
     }
 
     [HttpPut("profile/me/change-avatar")]
@@ -146,11 +140,9 @@ public class AccountController : ControllerBase
     {
         var user = _jwtHelper.GetAccountInfo();
 
-        var imageDto = await _service.ChangeAvatarAsync(user.Id, request.Picture);
+        var res = await _service.ChangeAvatarAsync(user.Id, request.Picture);
 
-        return imageDto == true
-            ? ApiResponse.Success(imageDto)
-            : ApiResponse.NotFound(_lang.Get("AvatarChangeFailed"));
+        return res ? ApiResponse.Success() : ApiResponse.NotFound("AvatarChangeFailed");
     }
 
     [HttpPut("profile/me/self-remove")]
@@ -160,13 +152,13 @@ public class AccountController : ControllerBase
 
         var res = await _service.SelfRemoveAccount(user.Id);
 
-        if (res != null)
-        {
-            var content =
-                $"{_lang.Get("SelfRemoveAccountEmail1")} {_settings.SelfRemoveDurationDays} {_lang.Get("SelfRemoveAccountEmail2")} ({res})";
-            return ApiResponse.Success(content);
-        }
+        // if (res != null)
+        // {
+        //     var content =
+        //         $"{_lang.Get("SelfRemoveAccountEmail1")} {_settings.SelfRemoveDurationDays} {_lang.Get("SelfRemoveAccountEmail2")} ({res})";
+        //     return ApiResponse.Success(content);
+        // }
 
-        return ApiResponse.NotFound(_lang.Get("AccountNotFound"));
+        return res != null ? ApiResponse.Success(res) : ApiResponse.NotFound("AccountNotFound");
     }
 }
