@@ -33,7 +33,7 @@ public class BaseSettings
     /// <summary>
     /// Configuration settings for Cloudinary integration.
     /// </summary>
-    public CloudinarySettings CloudinarySettings { get; set; } = null!;
+    public UploadSettings UploadSettings { get; set; } = null!;
 
     /// <summary>
     /// Configuration settings for JWT token generation and validation.

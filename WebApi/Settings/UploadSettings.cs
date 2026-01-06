@@ -3,7 +3,7 @@ namespace WebApi.Settings;
 /// <summary>
 /// Configuration settings for Cloudinary integration.
 /// </summary>
-public class CloudinarySettings
+public class UploadSettings
 {
     /// <summary>
     /// The Cloudinary cloud name.
@@ -19,4 +19,8 @@ public class CloudinarySettings
     /// The Cloudinary API secret key.
     /// </summary>
     public string ApiSecret { get; set; } = null!;
+
+    public string PublicKey { get; set; } = null!;
+    public string PrivateKey { get; set; } = null!;
+    public string UrlEndpoint { get; set; } = null!;
 }

@@ -136,13 +136,15 @@ public class AccountCleanupHelper : BackgroundService
     {
         using var scope = _serviceProvider.CreateScope();
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-        var cloudinary = scope.ServiceProvider.GetRequiredService<CloudinaryHelper>();
+        var uploadHelper = scope.ServiceProvider.GetRequiredService<UploadHelper>();
         var pictures = await unitOfWork
             .Pictures.GetQuery()
             .Where(a => a.AccountId == null && a.PostId == null && a.CommentId == null)
             .ToListAsync();
 
-        var res = await cloudinary.DeleteImages(pictures.Select(p => p.PublicId).ToList());
+        Console.WriteLine($"Deleting pictures from imgbb... {pictures.Count}");
+
+        await uploadHelper.DeleteImageAsync(pictures.Select(p => p.PublicId).ToList());
 
         unitOfWork.Pictures.RemoveRange(pictures);
         await unitOfWork.SaveChangesAsync();

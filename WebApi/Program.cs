@@ -5,6 +5,8 @@ using BusinessObject.Seeds;
 using DataAccess.Repositories;
 using DataAccess.Repositories.Implementations;
 using DataAccess.UnitOfWork;
+using FirebaseAdmin;
+using Google.Apis.Auth.OAuth2;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Localization;
@@ -64,8 +66,8 @@ builder.Services.Configure<EmailSettings>(
     builder.Configuration.GetSection("BaseSettings:EmailSettings")
 );
 builder.Services.Configure<JwtSettings>(jwtSettings);
-builder.Services.Configure<CloudinarySettings>(
-    builder.Configuration.GetSection("BaseSettings:CloudinarySettings")
+builder.Services.Configure<UploadSettings>(
+    builder.Configuration.GetSection("BaseSettings:UploadSettings")
 );
 builder.Services.Configure<BaseSettings>(builder.Configuration.GetSection("BaseSettings"));
 
@@ -166,7 +168,9 @@ builder.Services.AddSingleton<MyBlogLogger>();
 // Helpers
 builder.Services.AddScoped<JwtHelper>();
 builder.Services.AddScoped<EmailHelper>();
-builder.Services.AddScoped<CloudinaryHelper>();
+
+// builder.Services.AddScoped<CloudinaryHelper>();
+builder.Services.AddScoped<UploadHelper>();
 
 // Repositories
 builder.Services.AddScoped<IAccountRepository, AccountRepository>();
