@@ -1,26 +1,27 @@
 using BusinessObject;
+using BusinessObject.Models;
 using DataAccess.Repositories;
 
 namespace DataAccess.UnitOfWork;
 
 public class UnitOfWork : IUnitOfWork
 {
-    public IAccountRepository Accounts { get; }
-    public IPictureRepository Pictures { get; }
-    public IPostRepository Posts { get; }
-    public IPostLikeRepository PostLikes { get; }
-    public ICommentRepository Comments { get; }
-    public ICommentLikeRepository CommentLikes { get; }
+    public IRepository<Account> Accounts { get; }
+    public IRepository<Picture> Pictures { get; }
+    public IRepository<Post> Posts { get; }
+    public IRepository<PostLike> PostLikes { get; }
+    public IRepository<Comment> Comments { get; }
+    public IRepository<CommentLike> CommentLikes { get; }
     private readonly MyBlogContext _context;
 
     public UnitOfWork(
         MyBlogContext context,
-        IAccountRepository accountRepository,
-        IPictureRepository pictureRepository,
-        IPostRepository postRepository,
-        IPostLikeRepository postLikeRepository,
-        ICommentRepository commentRepository,
-        ICommentLikeRepository commentLikeRepository
+        IRepository<Account> accountRepository,
+        IRepository<Picture> pictureRepository,
+        IRepository<Post> postRepository,
+        IRepository<PostLike> postLikeRepository,
+        IRepository<Comment> commentRepository,
+        IRepository<CommentLike> commentLikeRepository
     )
     {
         _context = context;

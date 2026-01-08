@@ -1,3 +1,4 @@
+using BusinessObject.Models;
 using DataAccess.Repositories;
 
 namespace DataAccess.UnitOfWork;
@@ -10,32 +11,32 @@ public interface IUnitOfWork
     /// <summary>
     /// Gets the account repository.
     /// </summary>
-    IAccountRepository Accounts { get; }
+    IRepository<Account> Accounts { get; }
 
     /// <summary>
     /// Gets the picture repository.
     /// </summary>
-    IPictureRepository Pictures { get; }
+    IRepository<Picture> Pictures { get; }
 
     /// <summary>
     /// Gets the post repository.
     /// </summary>
-    IPostRepository Posts { get; }
+    IRepository<Post> Posts { get; }
 
     /// <summary>
     /// Gets the post like repository.
     /// </summary>
-    IPostLikeRepository PostLikes { get; }
+    IRepository<PostLike> PostLikes { get; }
 
     /// <summary>
     /// Gets the comment repository.
     /// </summary>
-    ICommentRepository Comments { get; }
+    IRepository<Comment> Comments { get; }
 
     /// <summary>
     /// Gets the comment like repository.
     /// </summary>
-    ICommentLikeRepository CommentLikes { get; }
+    IRepository<CommentLike> CommentLikes { get; }
 
     /// <summary>
     /// Begins a new database transaction.

@@ -3,10 +3,7 @@ using System.Text;
 using BusinessObject;
 using BusinessObject.Seeds;
 using DataAccess.Repositories;
-using DataAccess.Repositories.Implementations;
 using DataAccess.UnitOfWork;
-using FirebaseAdmin;
-using Google.Apis.Auth.OAuth2;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Localization;
@@ -60,16 +57,20 @@ builder.Services.AddDbContext<MyBlogContext>(options =>
         .EnableSensitiveDataLogging()
 );
 
-var jwtSettings = builder.Configuration.GetSection("BaseSettings:JwtSettings");
+builder.Services.Configure<BaseSettings>(builder.Configuration.GetSection("BaseSettings"));
 
 builder.Services.Configure<EmailSettings>(
     builder.Configuration.GetSection("BaseSettings:EmailSettings")
 );
-builder.Services.Configure<JwtSettings>(jwtSettings);
+builder.Services.Configure<JwtSettings>(
+    builder.Configuration.GetSection("BaseSettings:JwtSettings")
+);
 builder.Services.Configure<UploadSettings>(
     builder.Configuration.GetSection("BaseSettings:UploadSettings")
 );
-builder.Services.Configure<BaseSettings>(builder.Configuration.GetSection("BaseSettings"));
+
+var jwtSettings = builder.Configuration.GetSection("BaseSettings:JwtSettings");
+var frontendUrl = builder.Configuration["BaseSettings:FrontendUrl"]!;
 
 builder
     .Services.AddAuthentication(options =>
@@ -173,12 +174,13 @@ builder.Services.AddScoped<EmailHelper>();
 builder.Services.AddScoped<UploadHelper>();
 
 // Repositories
-builder.Services.AddScoped<IAccountRepository, AccountRepository>();
-builder.Services.AddScoped<ICommentRepository, CommentRepository>();
-builder.Services.AddScoped<ICommentLikeRepository, CommentLikeRepository>();
-builder.Services.AddScoped<IPictureRepository, PictureRepository>();
-builder.Services.AddScoped<IPostRepository, PostRepository>();
-builder.Services.AddScoped<IPostLikeRepository, PostLikeRepository>();
+// builder.Services.AddScoped<IAccountRepository, AccountRepository>();
+// builder.Services.AddScoped<ICommentRepository, CommentRepository>();
+// builder.Services.AddScoped<ICommentLikeRepository, CommentLikeRepository>();
+// builder.Services.AddScoped<IPictureRepository, PictureRepository>();
+// builder.Services.AddScoped<IPostRepository, PostRepository>();
+// builder.Services.AddScoped<IPostLikeRepository, PostLikeRepository>();
+builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 // Services
@@ -206,11 +208,7 @@ builder.Services.AddCors(options =>
         name: "_myAllowSpecificOrigins",
         policy =>
         {
-            policy
-                .WithOrigins("http://localhost:5173")
-                .AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowCredentials(); // <-- QUAN TRỌNG: Cho phép gửi Cookie
+            policy.WithOrigins(frontendUrl).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
         }
     );
 });

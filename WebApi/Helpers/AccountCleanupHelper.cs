@@ -1,4 +1,5 @@
 using BusinessObject.Enums;
+using DataAccess.Extensions;
 using DataAccess.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
 using WebApi.Loggers;
@@ -106,7 +107,7 @@ public class AccountCleanupHelper : BackgroundService
         var now = DateTime.UtcNow;
         var expiredAccounts = await unitOfWork
             .Accounts.GetQuery()
-            .Where(a => a.SelfRemoveTime <= now)
+            .WhereSelfRemoveTimeIsLessThanNow()
             .ToListAsync();
 
         if (expiredAccounts.Any())
@@ -137,10 +138,7 @@ public class AccountCleanupHelper : BackgroundService
         using var scope = _serviceProvider.CreateScope();
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
         var uploadHelper = scope.ServiceProvider.GetRequiredService<UploadHelper>();
-        var pictures = await unitOfWork
-            .Pictures.GetQuery()
-            .Where(a => a.AccountId == null && a.PostId == null && a.CommentId == null)
-            .ToListAsync();
+        var pictures = await unitOfWork.Pictures.GetQuery().WhereIsNotBeUsed().ToListAsync();
 
         Console.WriteLine($"Deleting pictures from imgbb... {pictures.Count}");
 

@@ -1,4 +1,5 @@
 using BusinessObject.Models;
+using DataAccess.Extensions;
 using DataAccess.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -36,10 +37,8 @@ public class AccountService : IAccountService
 
         var query = _unitOfWork
             .Accounts.ReadOnly()
-            .Where(a =>
-                (a.Username.Contains(name) || a.DisplayName.Contains(name))
-                && (cursor == null || a.CreatedAt < cursor)
-            )
+            .WhereContainsDisplaynameOrUsername(name)
+            .WhereIf(cursor.HasValue, a => a.WhereCursorLessThan(cursor!.Value))
             .OrderByDescending(a => a.CreatedAt)
             .Take(pageSize + 1);
 
@@ -65,7 +64,7 @@ public class AccountService : IAccountService
     {
         var account = await _unitOfWork
             .Accounts.ReadOnly()
-            .Where(x => x.Id == accountId)
+            .WhereId(accountId)
             .Select(a => new AccountResponse
             {
                 Id = a.Id,
@@ -88,7 +87,7 @@ public class AccountService : IAccountService
     {
         var account = await _unitOfWork
             .Accounts.ReadOnly()
-            .Where(x => x.Username == username)
+            .WhereUsername(username)
             .Select(a => new AccountResponse
             {
                 Id = a.Id,
@@ -147,7 +146,9 @@ public class AccountService : IAccountService
     {
         var account = await _unitOfWork
             .Accounts.GetQuery()
-            .FirstOrDefaultAsync(a => a.Id == accountId && a.DeletedAt == null);
+            .WhereId(accountId)
+            .WhereDeletedIsNull()
+            .FirstOrDefaultAsync();
 
         if (account == null)
         {
@@ -164,7 +165,9 @@ public class AccountService : IAccountService
     {
         var account = await _unitOfWork
             .Accounts.ReadOnly()
-            .FirstOrDefaultAsync(a => a.Id == accountId && a.DeletedAt == null);
+            .WhereId(accountId)
+            .WhereDeletedIsNull()
+            .FirstOrDefaultAsync();
 
         return account != null
             && PasswordHasherHelper.VerifyPassword(password, account.HashedPassword);
@@ -176,7 +179,9 @@ public class AccountService : IAccountService
         var account = await _unitOfWork
             .Accounts.ReadOnly()
             .Include(a => a.Picture)
-            .FirstOrDefaultAsync(a => a.Id == accountId && a.DeletedAt == null);
+            .WhereId(accountId)
+            .WhereDeletedIsNull()
+            .FirstOrDefaultAsync();
 
         if (account == null)
         {
@@ -185,7 +190,7 @@ public class AccountService : IAccountService
 
         var picture = await _unitOfWork
             .Pictures.GetQuery()
-            .Where(p => p.Link == avatarFile)
+            .WhereLink(avatarFile)
             .ExecuteUpdateAsync(p => p.SetProperty(p => p.AccountId, accountId));
 
         await _unitOfWork.SaveChangesAsync();
@@ -197,9 +202,10 @@ public class AccountService : IAccountService
     {
         var account = await _unitOfWork
             .Accounts.GetQuery()
-            .FirstOrDefaultAsync(a =>
-                a.Id == accountId && a.SelfRemoveTime == null && a.DeletedAt == null
-            );
+            .WhereId(accountId)
+            .WhereDeletedIsNull()
+            .WhereSelfRemoveTimeIsNull()
+            .FirstOrDefaultAsync();
 
         if (account == null)
         {

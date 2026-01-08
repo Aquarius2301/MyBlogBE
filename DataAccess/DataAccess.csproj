@@ -5,6 +5,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Extensions/" />
     <Folder Include="UnitOfWork\" />
   </ItemGroup>
 

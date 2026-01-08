@@ -1,5 +1,6 @@
 using BusinessObject.Enums;
 using BusinessObject.Models;
+using DataAccess.Extensions;
 using DataAccess.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -31,29 +32,24 @@ public class AuthService : IAuthService
 
     public Task<Account?> GetAccountByNameOrEmailAsync(string identifier)
     {
-        var query = _unitOfWork.Accounts.GetQuery();
-
-        query = query.Where(a =>
-            (a.Username == identifier || a.Email == identifier) && a.DeletedAt == null
-        );
+        var query = _unitOfWork
+            .Accounts.GetQuery()
+            .WhereDeletedIsNull()
+            .WhereUsernameOrEmail(identifier);
 
         return query.FirstOrDefaultAsync();
     }
 
     public Task<Account?> GetAccountByUsernameAsync(string username)
     {
-        var query = _unitOfWork.Accounts.ReadOnly();
-
-        query = query.Where(a => a.Username == username && a.DeletedAt == null);
+        var query = _unitOfWork.Accounts.ReadOnly().WhereUsername(username).WhereDeletedIsNull();
 
         return query.FirstOrDefaultAsync();
     }
 
     public Task<Account?> GetAccountByEmailAsync(string email)
     {
-        var query = _unitOfWork.Accounts.ReadOnly();
-
-        query = query.Where(a => a.Email == email && a.DeletedAt == null);
+        var query = _unitOfWork.Accounts.ReadOnly().WhereEmail(email).WhereDeletedIsNull();
 
         return query.FirstOrDefaultAsync();
     }
@@ -62,7 +58,9 @@ public class AuthService : IAuthService
     {
         var account = await _unitOfWork
             .Accounts.GetQuery()
-            .FirstOrDefaultAsync(a => a.Username == username && a.DeletedAt == null);
+            .WhereUsername(username)
+            .WhereDeletedIsNull()
+            .FirstOrDefaultAsync();
 
         if (
             account == null
@@ -88,16 +86,13 @@ public class AuthService : IAuthService
         };
     }
 
-    private Task<Account?> GetAccountByRefreshTokenAsync(string token)
-    {
-        var query = _unitOfWork.Accounts.GetQuery();
-
-        return query.FirstOrDefaultAsync(a => a.RefreshToken == token);
-    }
-
     public async Task<AuthResponse?> GetRefreshTokenAsync(string refreshToken)
     {
-        var account = await GetAccountByRefreshTokenAsync(refreshToken);
+        var account = await _unitOfWork
+            .Accounts.GetQuery()
+            .WhereRefreshToken(refreshToken)
+            .WhereDeletedIsNull()
+            .FirstOrDefaultAsync();
 
         if (account != null)
         {
@@ -136,7 +131,8 @@ public class AuthService : IAuthService
     {
         var account = await _unitOfWork
             .Accounts.GetQuery()
-            .FirstOrDefaultAsync(a => a.Id == accountId);
+            .WhereId(accountId)
+            .FirstOrDefaultAsync();
 
         if (account != null)
         {
@@ -190,11 +186,12 @@ public class AuthService : IAuthService
 
     private Task<Account?> GetAccountByEmailVerifiedCodeAsync(string code, VerificationType type)
     {
-        var query = _unitOfWork.Accounts.GetQuery();
+        var query = _unitOfWork
+            .Accounts.GetQuery()
+            .WhereEmailVerifiedCode(code)
+            .WhereVerificationType(type);
 
-        return query.FirstOrDefaultAsync(a =>
-            a.EmailVerifiedCode == code && a.VerificationType == type
-        );
+        return query.FirstOrDefaultAsync();
     }
 
     public async Task<bool> ConfirmRegisterAccountAsync(string confirmCode)
@@ -240,7 +237,11 @@ public class AuthService : IAuthService
     public async Task<bool> ForgotPasswordAsync(string identifier)
     {
         var tokenTimeout = _settings.TokenExpiryMinutes;
-        var account = await GetAccountByNameOrEmailAsync(identifier);
+        var account = await _unitOfWork
+            .Accounts.GetQuery()
+            .WhereDeletedIsNull()
+            .WhereUsernameOrEmail(identifier)
+            .FirstOrDefaultAsync();
 
         if (account != null)
         {

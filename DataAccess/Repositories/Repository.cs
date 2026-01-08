@@ -2,7 +2,7 @@ using System;
 using BusinessObject;
 using Microsoft.EntityFrameworkCore;
 
-namespace DataAccess.Repositories.Implementations;
+namespace DataAccess.Repositories;
 
 public class Repository<T> : IRepository<T>
     where T : class

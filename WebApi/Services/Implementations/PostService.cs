@@ -1,4 +1,5 @@
 using BusinessObject.Models;
+using DataAccess.Extensions;
 using DataAccess.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -27,7 +28,8 @@ public class PostService : IPostService
     {
         var baseQuery = _unitOfWork
             .Posts.ReadOnly()
-            .Where(p => p.DeletedAt == null && (cursor == null || p.CreatedAt < cursor));
+            .WhereDeletedIsNull()
+            .WhereIf(cursor.HasValue, q => q.WhereCursorLessThan(cursor!.Value));
 
         var postsQuery = baseQuery.OrderByDescending(p => p.CreatedAt).Take(pageSize + 1);
 
@@ -101,11 +103,9 @@ public class PostService : IPostService
     {
         var baseQuery = _unitOfWork
             .Posts.ReadOnly()
-            .Where(p =>
-                p.DeletedAt == null
-                && p.AccountId == accountId
-                && (cursor == null || p.CreatedAt < cursor)
-            );
+            .WhereDeletedIsNull()
+            .WhereAccountId(accountId)
+            .WhereIf(cursor.HasValue, q => q.WhereCursorLessThan(cursor!.Value));
 
         var postsQuery = baseQuery.OrderByDescending(p => p.CreatedAt).Take(pageSize + 1);
 
@@ -178,11 +178,9 @@ public class PostService : IPostService
     {
         var baseQuery = _unitOfWork
             .Posts.ReadOnly()
-            .Where(p =>
-                p.DeletedAt == null
-                && p.Account.Username == username
-                && (cursor == null || p.CreatedAt < cursor)
-            );
+            .WhereDeletedIsNull()
+            .WhereAccountUsername(username)
+            .WhereIf(cursor.HasValue, q => q.WhereCursorLessThan(cursor!.Value));
 
         var postsQuery = baseQuery.OrderByDescending(p => p.CreatedAt).Take(pageSize + 1);
 
@@ -252,7 +250,8 @@ public class PostService : IPostService
     {
         return await _unitOfWork
             .Posts.ReadOnly()
-            .Where(p => p.DeletedAt == null && p.Link == link)
+            .WhereDeletedIsNull()
+            .WhereLink(link)
             .Select(p => new GetPostDetailResponse
             {
                 Id = p.Id,
@@ -283,18 +282,23 @@ public class PostService : IPostService
             .FirstOrDefaultAsync();
     }
 
+    private async Task<bool> IsPostExists(Guid postId)
+    {
+        return await _unitOfWork.Posts.ReadOnly().WhereDeletedIsNull().WhereId(postId).AnyAsync();
+    }
+
     public async Task<int?> LikePostAsync(Guid postId, Guid accountId)
     {
-        var postExists = await _unitOfWork
-            .Posts.ReadOnly()
-            .AnyAsync(p => p.Id == postId && p.DeletedAt == null);
+        var postExists = await IsPostExists(postId);
 
         if (!postExists)
             return null;
 
         var alreadyLiked = await _unitOfWork
             .PostLikes.ReadOnly()
-            .AnyAsync(l => l.PostId == postId && l.AccountId == accountId);
+            .WhereAccountId(accountId)
+            .WherePostId(postId)
+            .AnyAsync();
 
         if (!alreadyLiked)
         {
@@ -310,14 +314,7 @@ public class PostService : IPostService
             await _unitOfWork.SaveChangesAsync();
         }
 
-        return await _unitOfWork.PostLikes.ReadOnly().CountAsync(l => l.PostId == postId);
-    }
-
-    private async Task<bool> IsPostExists(Guid postId)
-    {
-        return await _unitOfWork
-            .Posts.ReadOnly()
-            .AnyAsync(p => p.Id == postId && p.DeletedAt == null);
+        return await _unitOfWork.PostLikes.ReadOnly().WherePostId(postId).CountAsync();
     }
 
     public async Task<int?> CancelLikePostAsync(Guid postId, Guid accountId)
@@ -329,7 +326,9 @@ public class PostService : IPostService
 
         var alreadyLiked = await _unitOfWork
             .PostLikes.GetQuery()
-            .FirstOrDefaultAsync(l => l.PostId == postId && l.AccountId == accountId);
+            .WhereAccountId(accountId)
+            .WherePostId(postId)
+            .FirstOrDefaultAsync();
 
         if (alreadyLiked != null)
         {
@@ -338,7 +337,7 @@ public class PostService : IPostService
             await _unitOfWork.SaveChangesAsync();
         }
 
-        return await _unitOfWork.PostLikes.ReadOnly().CountAsync(l => l.PostId == postId);
+        return await _unitOfWork.PostLikes.ReadOnly().WherePostId(postId).CountAsync();
     }
 
     public async Task<(List<GetCommentsResponse>?, DateTime?)> GetPostCommentsList(
@@ -357,12 +356,10 @@ public class PostService : IPostService
 
         var baseQuery = _unitOfWork
             .Comments.ReadOnly()
-            .Where(c =>
-                c.PostId == postId
-                && c.ParentCommentId == null
-                && (cursor == null || c.CreatedAt < cursor)
-                && c.DeletedAt == null
-            );
+            .WhereDeletedIsNull()
+            .WherePostId(postId)
+            .WhereParentId(null)
+            .WhereIf(cursor.HasValue, q => q.WhereCursorLessThan(cursor!.Value));
 
         var commmentsQuery = baseQuery.OrderByDescending(c => c.CreatedAt).Take(pageSize + 1);
 
@@ -407,7 +404,8 @@ public class PostService : IPostService
     {
         var existingAccount = await _unitOfWork
             .Accounts.ReadOnly()
-            .Where(a => a.DeletedAt == null && a.Id == accountId)
+            .WhereDeletedIsNull()
+            .WhereId(accountId)
             .Select(a => new
             {
                 a.Username,
@@ -478,7 +476,9 @@ public class PostService : IPostService
     {
         var existingPost = await _unitOfWork
             .Posts.GetQuery()
-            .Where(p => p.Id == postId && p.AccountId == accountId && p.DeletedAt == null)
+            .WhereDeletedIsNull()
+            .WhereId(postId)
+            .WhereAccountId(accountId)
             .Select(p => new
             {
                 p.Id,
@@ -507,7 +507,7 @@ public class PostService : IPostService
 
         await _unitOfWork
             .Pictures.GetQuery()
-            .Where(p => p.PostId == postId)
+            .WherePostId(postId)
             .ExecuteUpdateAsync(p => p.SetProperty(x => x.PostId, (Guid?)null));
 
         if (request.Pictures?.Any() == true)
@@ -564,7 +564,9 @@ public class PostService : IPostService
 
         var affectedRows = await _unitOfWork
             .Posts.GetQuery()
-            .Where(p => p.Id == postId && p.AccountId == accountId && p.DeletedAt == null)
+            .WhereDeletedIsNull()
+            .WhereId(postId)
+            .WhereAccountId(accountId)
             .ExecuteUpdateAsync(setters => setters.SetProperty(p => p.DeletedAt, deletedAt));
 
         if (affectedRows == 0)
@@ -572,7 +574,7 @@ public class PostService : IPostService
 
         await _unitOfWork
             .Pictures.GetQuery()
-            .Where(p => p.PostId == postId)
+            .WherePostId(postId)
             .ExecuteUpdateAsync(setters => setters.SetProperty(p => p.PostId, (Guid?)null));
 
         return true;

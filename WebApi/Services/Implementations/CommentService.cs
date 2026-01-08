@@ -1,9 +1,8 @@
 using BusinessObject.Models;
+using DataAccess.Extensions;
 using DataAccess.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
 using WebApi.Dtos;
-using WebApi.Helpers;
-using WebApi.Middlewares;
 
 namespace WebApi.Services.Implementations;
 
@@ -25,12 +24,10 @@ public class CommentService : ICommentService
     {
         var baseQuery = _unitOfWork
             .Comments.ReadOnly()
-            .Where(c =>
-                c.ParentCommentId == commentId
-                && c.ReplyAccountId != null
-                && (cursor == null || c.CreatedAt > cursor)
-                && c.DeletedAt == null
-            );
+            .WhereDeletedIsNull()
+            .WhereReplyAccountId(null)
+            .WhereParentId(commentId)
+            .WhereIf(cursor != null, q => q.WhereCursorGreaterThan(cursor!.Value));
 
         if (!await baseQuery.AnyAsync())
         {
@@ -88,7 +85,9 @@ public class CommentService : ICommentService
     {
         return await _unitOfWork
             .Comments.ReadOnly()
-            .AnyAsync(p => p.Id == commentId && p.DeletedAt == null);
+            .WhereDeletedIsNull()
+            .WhereId(commentId)
+            .AnyAsync();
     }
 
     public async Task<int?> LikeCommentAsync(Guid commentId, Guid accountId)
@@ -102,7 +101,9 @@ public class CommentService : ICommentService
 
         var existingLike = await _unitOfWork
             .CommentLikes.GetQuery()
-            .FirstOrDefaultAsync(cl => cl.AccountId == accountId && cl.CommentId == commentId);
+            .WhereCommentId(commentId)
+            .WhereAccountId(accountId)
+            .FirstOrDefaultAsync();
 
         if (existingLike == null)
         {
@@ -118,10 +119,7 @@ public class CommentService : ICommentService
             await _unitOfWork.SaveChangesAsync();
         }
 
-        return await _unitOfWork
-            .CommentLikes.ReadOnly()
-            .Where(x => x.CommentId == commentId)
-            .CountAsync();
+        return await _unitOfWork.CommentLikes.ReadOnly().WhereCommentId(commentId).CountAsync();
     }
 
     public async Task<int?> CancelLikeCommentAsync(Guid commentId, Guid accountId)
@@ -135,7 +133,9 @@ public class CommentService : ICommentService
 
         var existingLike = await _unitOfWork
             .CommentLikes.GetQuery()
-            .FirstOrDefaultAsync(cl => cl.AccountId == accountId && cl.CommentId == commentId);
+            .WhereCommentId(commentId)
+            .WhereAccountId(accountId)
+            .FirstOrDefaultAsync();
 
         if (existingLike != null)
         {
@@ -143,10 +143,7 @@ public class CommentService : ICommentService
             await _unitOfWork.SaveChangesAsync();
         }
 
-        return await _unitOfWork
-            .CommentLikes.ReadOnly()
-            .Where(x => x.CommentId == commentId)
-            .CountAsync();
+        return await _unitOfWork.CommentLikes.ReadOnly().WhereCommentId(commentId).CountAsync();
     }
 
     public async Task<GetCommentsResponse?> AddCommentAsync(
@@ -156,7 +153,9 @@ public class CommentService : ICommentService
     {
         var post = await _unitOfWork
             .Posts.ReadOnly()
-            .FirstOrDefaultAsync(p => p.Id == request.PostId && p.DeletedAt == null);
+            .WhereDeletedIsNull()
+            .WhereId(request.PostId)
+            .FirstOrDefaultAsync();
 
         if (post == null)
             return null;
@@ -165,11 +164,10 @@ public class CommentService : ICommentService
         {
             var parentComment = await _unitOfWork
                 .Comments.ReadOnly()
-                .FirstOrDefaultAsync(c =>
-                    c.Id == request.ParentCommentId
-                    && c.PostId == request.PostId
-                    && c.DeletedAt == null
-                );
+                .WhereDeletedIsNull()
+                .WherePostId(request.PostId)
+                .WhereId(request.ParentCommentId.Value)
+                .FirstOrDefaultAsync();
 
             if (parentComment == null)
                 return null;
@@ -181,6 +179,7 @@ public class CommentService : ICommentService
         {
             replyAccount = await _unitOfWork
                 .Accounts.ReadOnly()
+                .WhereId(request.ReplyAccountId.Value)
                 .Select(a => new AccountNameResponse
                 {
                     Id = a.Id,
@@ -188,7 +187,7 @@ public class CommentService : ICommentService
                     DisplayName = a.DisplayName,
                     Avatar = a.Picture != null ? a.Picture.Link : string.Empty,
                 })
-                .FirstOrDefaultAsync(c => c.Id == request.ReplyAccountId);
+                .FirstOrDefaultAsync();
 
             if (replyAccount == null)
                 return null;
@@ -196,7 +195,7 @@ public class CommentService : ICommentService
 
         var commenter = await _unitOfWork
             .Accounts.ReadOnly()
-            .Where(a => a.Id == accountId)
+            .WhereId(accountId)
             .Select(a => new AccountNameResponse
             {
                 Id = a.Id,
@@ -260,9 +259,10 @@ public class CommentService : ICommentService
     {
         var existingComment = await _unitOfWork
             .Comments.GetQuery()
-            .FirstOrDefaultAsync(c =>
-                c.Id == commentId && c.AccountId == accountId && c.DeletedAt == null
-            );
+            .WhereDeletedIsNull()
+            .WhereId(commentId)
+            .WhereAccountId(accountId)
+            .FirstOrDefaultAsync();
 
         if (existingComment == null)
         {
@@ -278,7 +278,7 @@ public class CommentService : ICommentService
         // Clear existing pictures
         await _unitOfWork
             .Pictures.GetQuery()
-            .Where(p => p.CommentId == commentId)
+            .WhereCommentId(commentId)
             .ExecuteUpdateAsync(p => p.SetProperty(x => x.CommentId, (Guid?)null));
 
         if (request.Pictures.Count > 0)
@@ -294,7 +294,9 @@ public class CommentService : ICommentService
 
         var res = await _unitOfWork
             .Comments.ReadOnly()
-            .Where(x => x.Id == commentId && x.DeletedAt == null)
+            .WhereDeletedIsNull()
+            .WhereId(commentId)
+            .WhereAccountId(accountId)
             .Select(c => new GetCommentsResponse
             {
                 Id = c.Id,
@@ -341,9 +343,10 @@ public class CommentService : ICommentService
     {
         var existingComment = await _unitOfWork
             .Comments.GetQuery()
-            .FirstOrDefaultAsync(c =>
-                c.Id == commentId && c.AccountId == accountId && c.DeletedAt == null
-            );
+            .WhereDeletedIsNull()
+            .WhereId(commentId)
+            .WhereAccountId(accountId)
+            .FirstOrDefaultAsync();
 
         if (existingComment == null)
         {
@@ -356,7 +359,7 @@ public class CommentService : ICommentService
 
         await _unitOfWork
             .Pictures.GetQuery()
-            .Where(p => p.CommentId == commentId)
+            .WhereCommentId(commentId)
             .ExecuteUpdateAsync(p => p.SetProperty(x => x.CommentId, (Guid?)null));
 
         await _unitOfWork.SaveChangesAsync();
